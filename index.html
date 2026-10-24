@@ -403,6 +403,12 @@ body.pad .ride-btn::after { content: " · X"; opacity: 0.6; }
 .padtest .ok { color: var(--good); }
 .padtest .bar { display: inline-block; width: 70px; height: 7px; border-radius: 4px; background: rgba(236, 230, 207, 0.18); vertical-align: middle; overflow: hidden; }
 .padtest .bar i { display: block; height: 100%; background: var(--accent); }
+.vehpick { position: fixed; left: 50%; top: 52%; transform: translate(-50%, -50%); max-width: calc(100% - 24px); padding: 8px 10px; display: grid; gap: 6px; justify-items: center; z-index: 4; pointer-events: none; }
+.vehpick .row { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; }
+.vehpick .row span { padding: 6px 12px; border-radius: 8px; border: 1px solid var(--hud-line); font: 800 16px var(--font-display); letter-spacing: 0.05em; text-transform: uppercase; }
+.vehpick .row span.on { background: var(--accent); border-color: var(--accent); color: #1c1608; transform: scale(1.08); }
+.vehpick small { font-size: 12px; color: var(--hud-dim); }
+@media (max-height: 500px) { .vehpick { top: 58%; } .vehpick .row span { padding: 4px 9px; font-size: 14px; } }
 /* The open game menu needs the top and right of the screen */
 .menu-open .gembar, .menu-open .pw, .menu-open .horn, .menu-open #pedal { display: none !important; }
 /* Walking always gets the turn and walk sliders, even with tilt steering on */
@@ -560,6 +566,7 @@ body.pad .ride-btn::after { content: " · X"; opacity: 0.6; }
 <div class="walk-hint glass" id="walkHint" hidden>Walk to the red garage and pick a ride</div>
 <button class="ride-btn" id="rideBtn" hidden>Ride</button>
 
+<div class="vehpick panel" id="vehPick" hidden aria-live="polite"></div>
 <nav class="gembar" id="gemBar" aria-label="Points and gem houses"></nav>
 <button class="pw glass" id="turboBtn" aria-label="Turbo boost">TURBO</button>
 <button class="pw glass" id="jumpBtn" aria-label="Super jump">JUMP</button>
@@ -2115,6 +2122,15 @@ function updateCamera(dt) {
 const $ = id => document.getElementById(id);
 // iOS ignores the viewport's zoom lock, so block pinch and double-tap zoom here
 for (const ev of ['gesturestart', 'gesturechange', 'dblclick']) document.addEventListener(ev, e => e.preventDefault(), { passive: false });
+// Keep the game page: if a controller button (or a swipe) tells the browser to go back, step forward again instead.
+// Browsers skip history entries added without a tap, so arm this on the first touch, click, key or controller press.
+let backTrap = false;
+function armBackTrap() {
+  if (backTrap) return;
+  try { history.pushState({ bcr: 1 }, ''); backTrap = true; } catch (e) { /* not allowed in this frame */ }
+}
+for (const ev of ['pointerdown', 'keydown']) addEventListener(ev, armBackTrap, { capture: true });
+addEventListener('popstate', () => { backTrap = false; armBackTrap(); toast('Still here! Use B to close menus', 2); });
 // Mark the page while any dialog is open so the controls behind it step aside
 const DIALOGS = ['settings', 'parent', 'quiz', 'shop', 'login', 'timeup', 'pin'];
 const syncModal = () => document.body.classList.toggle('modal', DIALOGS.some(id => !$(id).hidden));
@@ -2502,7 +2518,7 @@ function pollGamepad() {
   // Prefer a controller the browser maps to the standard Xbox layout
   try { for (const g of (navigator.getGamepads ? navigator.getGamepads() : [])) if (g && g.connected && (!gp || (g.mapping === 'standard' && gp.mapping !== 'standard'))) gp = g; } catch (e) { /* not allowed here */ }
   if (!gp) { pad.steer = pad.throttle = pad.brake = 0; pad.hand = false; if (!$('settings').hidden) padTest(null); return; }
-  if (!pad.seen) { pad.seen = true; document.body.classList.add('pad'); toast('Controller connected · RT gas · LT brake · View picks a gem · Menu opens the menu', 4); }
+  if (!pad.seen) { pad.seen = true; armBackTrap(); document.body.classList.add('pad'); toast('Controller connected · RT gas · LT brake · View picks a gem · Menu opens the menu', 4); }
   // Some browsers report an unmapped layout where the triggers are axes 2 and 5 (-1 released, +1 pulled).
   // Only trust such an axis after it has read "released" once, so a resting 0 isn't taken as half throttle.
   const std = gp.mapping === 'standard';
@@ -2513,16 +2529,30 @@ function pollGamepad() {
   if (!$('settings').hidden) padTest(gp, btn);
   const ax = gp.axes[0] || 0, dz = 0.12;
   let st = Math.abs(ax) < dz ? 0 : (ax - Math.sign(ax) * dz) / (1 - dz);
-  if (btn(14).pressed) st = -1;
-  if (btn(15).pressed) st = 1;
+  if (phase !== 'drive' && btn(14).pressed) st = -1;
+  if (phase !== 'drive' && btn(15).pressed) st = 1;
   pad.steer = st * (0.35 + 0.65 * Math.abs(st));
-  pad.throttle = Math.max(btn(7).value, btn(0).pressed ? 1 : 0, btn(12).pressed ? 1 : 0);
-  pad.brake = Math.max(btn(6).value, btn(1).pressed ? 1 : 0, btn(13).pressed ? 1 : 0);
+  // Left stick up/down also drives (gas/brake), with a wide dead zone so steering doesn't add gas by accident
+  const ay = gp.axes[1] || 0, fwd = Math.abs(ay) < 0.3 ? 0 : (Math.abs(ay) - 0.3) / 0.7;
+  pad.throttle = Math.max(btn(7).value, btn(0).pressed ? 1 : 0, btn(12).pressed ? 1 : 0, ay < 0 ? fwd : 0);
+  pad.brake = Math.max(btn(6).value, btn(1).pressed ? 1 : 0, btn(13).pressed ? 1 : 0, ay > 0 ? fwd : 0);
   pad.hand = btn(5).pressed;
   const edge = i => btn(i).pressed && !pad.prev[i];
   const dlg = !pinEl.hidden ? pinEl : !timeupEl.hidden ? timeupEl : !loginEl.hidden ? loginEl : !quizEl.hidden ? quizEl : !shopEl.hidden ? shopEl : !parentEl.hidden ? parentEl : !$('settings').hidden ? $('settings') : !menuBody.hidden ? $('menu') : null;
   if (dlg) { padDialog(dlg, edge); pad.prev = gp.buttons.map(b => b.pressed); pad.steer = pad.throttle = pad.brake = 0; return; }
+  // Right stick looks around (standard layout only; elsewhere axes 2 and 3 can be triggers)
+  const lnow = performance.now() / 1000, ldt = Math.min(0.05, lnow - (pad.lookT || lnow)); pad.lookT = lnow;
+  const lx = std ? gp.axes[2] || 0 : 0, ly = std ? gp.axes[3] || 0 : 0;
+  if (Math.abs(lx) > 0.2 || Math.abs(ly) > 0.2) { cam.yaw -= lx * 2.4 * ldt; cam.pitch = clamp(cam.pitch + ly * 1.2 * ldt, 0.04, 1.1); cam.lastDrag = lnow; }
   if (phase !== 'drive') { homePad(edge); pad.prev = gp.buttons.map(b => b.pressed); return; }
+  // D-pad left/right highlights a vehicle, A switches to it at the map center, B cancels
+  if (edge(14)) vehPick(-1);
+  if (edge(15)) vehPick(1);
+  if (!vehPickEl.hidden) {
+    if (edge(0)) { const b = document.querySelector(`.picker [data-v="${vp.list[vp.idx]}"]`); vehPickEl.hidden = true; if (b && vp.list[vp.idx] !== car.type) { b.click(); toast(`${VNAMES[car.type]} · back at the start`, 1.8); } }
+    else if (edge(1) || lnow > vp.until) vehPickEl.hidden = true;
+    pad.throttle = btn(7).value;
+  }
   if (edge(3)) cycleCamera();
   if (edge(2)) honk();
   if (edge(4)) resetAction();
@@ -2533,6 +2563,14 @@ function pollGamepad() {
   pad.prev = gp.buttons.map(b => b.pressed);
 }
 addEventListener('gamepadconnected', () => { pad.seen = false; pad.trig = {}; });
+const vehPickEl = $('vehPick'), vp = { list: [], idx: 0, until: 0 };
+function vehPick(step) {
+  const list = Object.keys(SPECS).filter(owns);
+  if (vehPickEl.hidden || vp.list.join() !== list.join()) vp.idx = Math.max(0, list.indexOf(car.type));
+  vp.list = list; vp.idx = (vp.idx + step + list.length) % list.length; vp.until = performance.now() / 1000 + 5;
+  vehPickEl.innerHTML = `<div class="row">${list.map((t, i) => `<span class="${i === vp.idx ? 'on' : ''}">${VNAMES[t]}</span>`).join('')}</div><small>◀ ▶ choose · A switch · B cancel</small>`;
+  vehPickEl.hidden = false; sfx('beep', 0);
+}
 addEventListener('gamepaddisconnected', () => toast('Controller disconnected'));
 // Settings shows a live controller check: name, layout, and what is being pressed right now
 const PAD_NAMES = ['A', 'B', 'X', 'Y', 'LB', 'RB', 'LT', 'RT', 'View', 'Menu', 'L-stick', 'R-stick', 'Up', 'Down', 'Left', 'Right', 'Xbox'];

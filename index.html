@@ -150,7 +150,7 @@ kbd { font-family: var(--font-display); font-size: 12px; padding: 0 5px; border:
 .toast {
   position: fixed; left: 50%; top: 22%; transform: translateX(-50%); max-width: calc(100% - 2 * var(--edge) - 2 * var(--map)); padding: 6px 14px; border-radius: 10px;
   font-family: var(--font-display); font-weight: 700; font-size: 22px; letter-spacing: 0.04em; text-align: center; text-wrap: balance;
-  opacity: 0; transition: opacity 0.25s; pointer-events: none; font-variant-numeric: tabular-nums;
+  opacity: 0; transition: opacity 0.25s; pointer-events: none; font-variant-numeric: tabular-nums; z-index: 9;
 }
 .toast.show { opacity: 1; }
 .toast .good { color: var(--good); }
@@ -298,6 +298,8 @@ body:not(.touch) .ride-btn::after { content: " · E"; opacity: 0.6; }
 .q-pic.big { font-size: 64px; }
 .q-pic:empty { display: none; }
 .q-text { font: 800 34px/1.1 var(--font-display); letter-spacing: 0.02em; }
+.q-text.long { font: 700 22px/1.25 var(--font-body); letter-spacing: 0; }
+.q-pad.choices button { font-size: 20px; padding: 6px 8px; }
 .q-answer { display: flex; justify-content: center; gap: 6px; min-height: 0; }
 .q-answer:empty { display: none; }
 .q-answer .num { min-width: 110px; padding: 4px 14px; border-radius: 10px; border: 2px solid var(--accent); font: 800 36px/1.1 var(--font-display); }
@@ -380,6 +382,21 @@ body:not(.touch) .ride-btn::after { content: " · E"; opacity: 0.6; }
 @media (max-width: 720px) and (max-height: 500px) { .gembar [data-k="home"] .v { display: none; } }
 /* Short landscape: points bar starts right after the map so it never runs under the menu */
 @media (max-height: 500px) { .gembar { left: calc(var(--edge) + var(--map) + 10px + env(safe-area-inset-left, 0px)); transform: none; gap: 4px; } }
+.subj { display: flex; flex-wrap: wrap; gap: 6px; }
+.subj button, .chores button { padding: 6px 10px; border-radius: 18px; border: 1px solid var(--hud-line); background: transparent; color: var(--hud-fg); cursor: pointer; font: 600 14px var(--font-body); }
+.subj button[aria-pressed="true"], .chores button[aria-checked="true"] { background: var(--accent); border-color: var(--accent); color: #1c1608; }
+.chores { display: flex; flex-wrap: wrap; gap: 6px; }
+.newp { flex-wrap: wrap; }
+.newp select { width: auto; flex: 1 1 96px; }
+.newp input { flex-basis: 150px; }
+.timeup { text-align: center; width: min(420px, calc(100% - 24px)); }
+.timeup h2 { margin: 0; font: 800 24px var(--font-display); letter-spacing: 0.04em; text-transform: uppercase; }
+.timeup .go { padding: 12px; border-radius: 10px; border: 0; background: var(--accent); color: #1c1608; cursor: pointer; font: 800 19px var(--font-display); text-transform: uppercase; letter-spacing: 0.05em; }
+.timeup .wide, .pinbox .wide { padding: 9px; border-radius: 8px; border: 1px solid var(--hud-line); background: transparent; color: var(--hud-fg); cursor: pointer; font: 700 15px var(--font-display); letter-spacing: 0.05em; text-transform: uppercase; }
+.pinbox { width: min(360px, calc(100% - 24px)); }
+.gasbar .tl { margin-left: 4px; color: var(--hud-fg); }
+.gasbar .tl.low { color: var(--bad); }
+@media (max-height: 500px) { .timeup { gap: 5px; } .timeup .q-pic.big { font-size: 34px; } .timeup h2 { font-size: 20px; } }
 /* The open game menu needs the top and right of the screen */
 .menu-open .gembar, .menu-open .pw, .menu-open .horn, .menu-open #pedal { display: none !important; }
 /* Walking always gets the turn and walk sliders, even with tilt steering on */
@@ -435,6 +452,14 @@ body:not(.touch) .ride-btn::after { content: " · E"; opacity: 0.6; }
 
 <div class="settings panel" id="settings" role="dialog" aria-label="Settings" hidden>
   <h2>Settings</h2>
+  <span class="label">Gem house subjects · tap to mix</span>
+  <div class="subj" id="subjBox" role="group" aria-label="Subjects"></div>
+  <label class="label" for="levelSel">Challenge</label>
+  <select id="levelSel">
+    <option value="-1">Easier</option>
+    <option value="0">Just right for my grade</option>
+    <option value="1">Harder</option>
+  </select>
   <label class="label" for="camSel">Camera</label>
   <select id="camSel">
     <option value="chase">Chase · behind the vehicle</option>
@@ -483,12 +508,12 @@ body:not(.touch) .ride-btn::after { content: " · E"; opacity: 0.6; }
     <option value="on">On</option>
     <option value="off">Off</option>
   </select>
-  <button id="parentBtn" class="wide">Parent corner · learning &amp; progress</button>
+  <button id="parentBtn" class="wide">Parent corner · time limits, chores &amp; progress</button>
   <button id="settingsDone" class="primary">Done</button>
 </div>
 
 <div class="gauge">
-  <div class="gasbar" id="gasBar"><span aria-hidden="true">⛽</span><span class="gt"><i id="gasFill"></i></span><span class="gk" id="gasKm"></span></div>
+  <div class="gasbar" id="gasBar"><span aria-hidden="true">⛽</span><span class="gt"><i id="gasFill"></i></span><span class="gk" id="gasKm"></span><span class="gk tl" id="timeLeft"></span></div>
   <canvas id="dial" width="240" height="240"></canvas>
   <div class="readout">
     <span class="veh" id="vehName">ATV</span>
@@ -545,24 +570,42 @@ body:not(.touch) .ride-btn::after { content: " · E"; opacity: 0.6; }
   <div class="q-head"><h2>Who's playing?</h2><span class="q-tools"><button id="loginClose" aria-label="Close">✕</button></span></div>
   <div id="loginList"></div>
   <h3>New player</h3>
-  <form class="newp" id="loginForm"><input id="loginName" maxlength="14" placeholder="Type your name" autocomplete="off" enterkeyhint="go" aria-label="New player name"><button id="loginAdd">Start</button></form>
+  <form class="newp" id="loginForm"><input id="loginName" maxlength="14" placeholder="Type your name" autocomplete="off" enterkeyhint="go" aria-label="New player name"><select id="loginAge" aria-label="Age"></select><select id="loginGrade" aria-label="Grade"></select><button id="loginAdd">Start</button></form>
   <p class="snote">Points are saved on this device for each player. Pick your name next time and everything is still there.</p>
+</div>
+
+<div class="shop panel timeup" id="timeup" role="dialog" aria-label="Time is up" hidden>
+  <div class="q-pic big" id="tuPic">🏁</div>
+  <h2 id="tuTitle">Riding time is done for today</h2>
+  <p class="snote" id="tuText"></p>
+  <button id="tuLearn" class="go">📚 Practice questions</button>
+  <button id="tuHome" class="wide">🏠 Go home</button>
+  <button id="tuParent" class="wide">👪 Parent: add chore time</button>
+</div>
+
+<div class="shop panel pinbox" id="pin" role="dialog" aria-label="Parents only" hidden>
+  <div class="q-head"><h2 id="pinTitle">Parents only</h2><span class="q-tools"><button id="pinClose" aria-label="Close">✕</button></span></div>
+  <p class="snote" id="pinText"></p>
+  <form class="newp" id="pinForm"><input id="pinInput" type="password" inputmode="numeric" maxlength="6" autocomplete="off" aria-label="Parent PIN"><button>OK</button></form>
+  <button id="pinForgot" class="wide">Forgot the PIN?</button>
 </div>
 
 <div class="settings panel" id="parent" role="dialog" aria-label="Parent corner" hidden>
   <h2>Parent corner</h2>
-  <label class="label" for="p-level">Difficulty</label>
-  <select id="p-level">
-    <option value="easy">Easy · sums to 10, 3-letter words</option>
-    <option value="medium">Medium · sums to 20, 4-letter words</option>
-    <option value="hard">Hard · to 100, times tables, longer words</option>
-  </select>
-  <label class="label" for="p-topics">Challenges</label>
-  <select id="p-topics">
-    <option value="both">Math and spelling</option>
-    <option value="math">Math only</option>
-    <option value="spell">Spelling only</option>
-  </select>
+  <div class="note" id="p-who"></div>
+  <label class="label" for="p-grade">Grade</label>
+  <select id="p-grade"></select>
+  <label class="label" for="p-age">Age</label>
+  <select id="p-age"></select>
+  <label class="label" for="p-ride">Riding time per day</label>
+  <select id="p-ride"><option value="10">10 minutes</option><option value="15">15 minutes</option><option value="20">20 minutes</option><option value="30">30 minutes</option><option value="45">45 minutes</option><option value="60">1 hour</option><option value="0">No limit</option></select>
+  <label class="label" for="p-learnMin">Learning time per day</label>
+  <select id="p-learnMin"><option value="15">15 minutes</option><option value="30">30 minutes</option><option value="45">45 minutes</option><option value="60">1 hour</option><option value="0">No limit</option></select>
+  <span class="label">Chores done today · +10 min riding each</span>
+  <div class="chores" id="p-chores"></div>
+  <form class="newp" id="p-choreForm"><input id="p-choreName" maxlength="28" placeholder="Add another chore" autocomplete="off" aria-label="New chore"><button>Add</button></form>
+  <div class="note" id="p-today"></div>
+  <button id="p-pin" class="wide">Change parent PIN</button>
   <label class="label" for="p-timer">Timer for full points</label>
   <select id="p-timer">
     <option value="20">20 seconds</option>
@@ -1422,6 +1465,8 @@ const touch = { steer: 0, throttle: 0, brake: 0 };
 const KEYMAP = { ArrowUp: 'up', KeyW: 'up', ArrowDown: 'down', KeyS: 'down', ArrowLeft: 'left', KeyA: 'left', ArrowRight: 'right', KeyD: 'right', Space: 'hand' };
 addEventListener('keydown', e => {
   if (quiz.open) { quizKey(e); e.preventDefault(); return; }
+  if (!pinEl.hidden) { if (e.code === 'Escape') { pinEl.hidden = true; pin.then = null; } return; }
+  if (!timeupEl.hidden) return;
   if (!loginEl.hidden) { if (e.code === 'Escape' && player) loginEl.hidden = true; return; }
   if (!shopEl.hidden || !parentEl.hidden) { if (e.code === 'Escape') { shopEl.hidden = true; parentEl.hidden = true; } return; }
   if (KEYMAP[e.code]) { keys[KEYMAP[e.code]] = true; e.preventDefault(); }
@@ -2055,7 +2100,7 @@ const $ = id => document.getElementById(id);
 // iOS ignores the viewport's zoom lock, so block pinch and double-tap zoom here
 for (const ev of ['gesturestart', 'gesturechange', 'dblclick']) document.addEventListener(ev, e => e.preventDefault(), { passive: false });
 // Mark the page while any dialog is open so the controls behind it step aside
-const DIALOGS = ['settings', 'parent', 'quiz', 'shop', 'login'];
+const DIALOGS = ['settings', 'parent', 'quiz', 'shop', 'login', 'timeup', 'pin'];
 const syncModal = () => document.body.classList.toggle('modal', DIALOGS.some(id => !$(id).hidden));
 {
   const mo = new MutationObserver(syncModal);
@@ -2422,7 +2467,7 @@ function pollGamepad() {
   pad.brake = Math.max(btn(6).value, btn(1).pressed ? 1 : 0, btn(13).pressed ? 1 : 0);
   pad.hand = btn(5).pressed;
   const edge = i => btn(i).pressed && !pad.prev[i];
-  const dlg = !loginEl.hidden ? loginEl : !quizEl.hidden ? quizEl : !shopEl.hidden ? shopEl : !parentEl.hidden ? parentEl : null;
+  const dlg = !pinEl.hidden ? pinEl : !timeupEl.hidden ? timeupEl : !loginEl.hidden ? loginEl : !quizEl.hidden ? quizEl : !shopEl.hidden ? shopEl : !parentEl.hidden ? parentEl : null;
   if (dlg) { padDialog(dlg, edge); pad.prev = gp.buttons.map(b => b.pressed); pad.steer = pad.throttle = pad.brake = 0; return; }
   if (phase !== 'drive') { homePad(edge); pad.prev = gp.buttons.map(b => b.pressed); return; }
   if (edge(3)) cycleCamera();
@@ -2455,7 +2500,7 @@ function padDialog(dlg, edge) {
     if (best) best.focus();
   }
   if (edge(0)) { if (cur) cur.click(); else (items.find(b => !b.closest('.q-tools')) || items[0]).focus(); }
-  if (edge(1)) { if (dlg === quizEl) leaveHouse(); else if (dlg !== loginEl || player) dlg.hidden = true; }
+  if (edge(1)) { if (dlg === quizEl) leaveHouse(); else if (dlg !== timeupEl && (dlg !== loginEl || player)) dlg.hidden = true; }
 }
 
 // ---------- Animals ----------
@@ -2599,9 +2644,31 @@ const AIRCRAFT = ['plane', 'heli', 'jet'];
 const BLANK_STATS = () => ({ right: 0, late: 0, wrong: 0, items: {} });
 const prog = Object.assign({
   coins: 0, gems: 0, stars: 0, fuel: 20, owned: ['bike'], up: { engine: 0, tires: 0, tank: 0 }, paint: {}, powers: {}, badges: [],
-  houses: 0, fuelHouses: 0, streak: 0, bestStreak: 0, chest: '', math: BLANK_STATS(), spell: BLANK_STATS()
+  houses: 0, fuelHouses: 0, streak: 0, bestStreak: 0, chest: '', math: BLANK_STATS(), spell: BLANK_STATS(), read: BLANK_STATS(), sci: BLANK_STATS(), bible: BLANK_STATS(), bibleSeen: [],
+  day: { date: '', ride: 0, learn: 0, done: [] }
 }, store.get('bcr-prog-v1', {}));
-const learn = Object.assign({ level: 'easy', topics: 'both', timer: 30, voice: true, freeVehicles: false }, store.get('bcr-learn-v1', {}));
+const CHORES = ['Mowed the lawn', 'Swept the floor', 'Played with other kids', 'Made the bed', 'Cleaned my room', 'Helped with dishes', 'Fed the pets', 'Finished homework'];
+const learn = Object.assign({ level: 'easy', topics: 'both', timer: 30, voice: true, freeVehicles: false, adjust: 0, limits: { ride: 10, learn: 30 }, chores: CHORES.slice() }, store.get('bcr-learn-v1', {}));
+// Older saves picked "math", "spell" or "both"; turn that into the subject list
+if (!learn.subjects) learn.subjects = learn.topics === 'math' ? ['math'] : learn.topics === 'spell' ? ['write'] : ['math', 'write'];
+learn.subjects = [...new Set(learn.subjects.map(k => k === 'arith' ? 'math' : k))];
+// Difficulty follows the player's grade, nudged easier or harder in Settings
+const LEVELS = ['easy', 'medium', 'hard'];
+const gradeBase = g => g == null || g === '' ? null : g === 'K' || +g <= 1 ? 0 : +g <= 3 ? 1 : 2;
+function applyLevel() {
+  const base = gradeBase(player && player.grade);
+  learn.level = LEVELS[clamp((base == null ? 1 : base) + learn.adjust, 0, 2)];
+}
+applyLevel();
+// Daily play limits, counted per player per day; each chore a parent ticks adds 10 riding minutes
+function playDay() {
+  const d = new Date().toDateString();
+  if (prog.day.date !== d) prog.day = { date: d, ride: 0, learn: 0, done: [] };
+  return prog.day;
+}
+const rideLeft = () => learn.limits.ride ? (learn.limits.ride + 10 * playDay().done.length) * 60 - playDay().ride : Infinity;
+const learnLeft = () => learn.limits.learn ? learn.limits.learn * 60 - playDay().learn : Infinity;
+const mins = sec => sec < 60 ? `${Math.max(0, Math.ceil(sec))} s` : `${Math.ceil(sec / 60)} min`;
 const saveProg = () => store.set('bcr-prog-v1', prog);
 const tankSize = () => 20 + prog.up.tank * 10;
 const owns = t => learn.freeVehicles || PRICES[t] === 0 || prog.owned.includes(t);
@@ -2738,9 +2805,131 @@ function makeSpell() {
   do tiles = shuffle(word.split('')); while (tiles.join('') === word && new Set(word).size > 1);
   return { type: 'spell', key: word, word, emoji, tiles, text: 'Spell the word', say: `Spell ${word.toLowerCase()}.`, hint: `It starts with ${word[0]}.` };
 }
+// ---- More subjects: reading, other math, science (multiple choice) ----
+// Each bank entry: [question, right answer, wrong, wrong, optional picture]
+const SCIENCE = {
+  easy: [
+    ['Which animal can fly?', '🐦 Bird', '🐟 Fish', '🐄 Cow'], ['What do plants need to grow?', 'Water', 'Candy', 'Toys'],
+    ['Ice feels...', 'Cold', 'Hot', 'Sticky'], ['What is a baby frog called?', 'Tadpole', 'Kitten', 'Puppy'],
+    ['What do bees make?', 'Honey', 'Milk', 'Bread'], ['How many legs does a spider have?', '8', '6', '4', '🕷️'],
+    ['What gives us light in the day?', 'The sun', 'The moon', 'A cloud', '☀️'], ['Which season is the coldest?', 'Winter', 'Summer', 'Spring', '❄️'],
+    ['Where do fish live?', 'In water', 'In trees', 'In sand', '🐟'], ['What do cows eat?', 'Grass', 'Rocks', 'Pizza', '🐄'],
+    ['You smell with your...', 'Nose', 'Ears', 'Elbow', '👃'], ['Which one is a fruit?', '🍎 Apple', '🥕 Carrot', '🍞 Bread'],
+    ['What falls from clouds?', 'Rain', 'Rocks', 'Leaves', '🌧️'], ['Which animal has a long trunk?', 'Elephant', 'Lion', 'Bear', '🐘'],
+    ['A chick hatches from an...', 'Egg', 'Apple', 'Acorn', '🐣']
+  ],
+  medium: [
+    ['Water turns to ice when it gets...', 'Very cold', 'Very hot', 'Windy'], ['What planet do we live on?', 'Earth', 'Mars', 'The moon', '🌍'],
+    ['A caterpillar turns into a...', 'Butterfly', 'Spider', 'Bird', '🐛'], ['How many legs does an insect have?', '6', '8', '4', '🐜'],
+    ['Which one is a mammal?', 'Whale', 'Shark', 'Trout', '🐋'], ['Roots help a plant get...', 'Water', 'Sunlight', 'Wind', '🌱'],
+    ['Magnets stick to...', 'Iron', 'Wood', 'Plastic', '🧲'], ['All the bones in your body make your...', 'Skeleton', 'Muscles', 'Skin', '🦴'],
+    ['Which one is a liquid?', 'Juice', 'A rock', 'An ice cube'], ['What do we breathe in to stay alive?', 'Oxygen', 'Smoke', 'Sand'],
+    ['A rainbow needs rain and...', 'Sunlight', 'Snow', 'Darkness', '🌈'], ['Which animal sleeps all winter?', 'Bear', 'Robin', 'Horse', '🐻'],
+    ['Which planet is closest to the sun?', 'Mercury', 'Jupiter', 'Neptune', '🪐'], ['What do you call frozen rain?', 'Hail', 'Fog', 'Dew'],
+    ['Which sense do your ears give you?', 'Hearing', 'Taste', 'Touch', '👂']
+  ],
+  hard: [
+    ['Which part of a plant makes food from sunlight?', 'Leaves', 'Roots', 'Flowers', '🍃'], ['Water vapor turning back into drops is called...', 'Condensation', 'Melting', 'Freezing', '💧'],
+    ['What is the biggest planet?', 'Jupiter', 'Earth', 'Mars', '🪐'], ['Your heart pumps...', 'Blood', 'Air', 'Food', '❤️'],
+    ['Animals that eat only plants are called...', 'Herbivores', 'Carnivores', 'Predators', '🦌'], ['What force pulls things down to the ground?', 'Gravity', 'Magnetism', 'Friction', '🍎'],
+    ['How long does Earth take to go around the sun?', 'One year', 'One day', 'One month', '🌍'], ['A solid turning into a liquid is called...', 'Melting', 'Freezing', 'Boiling', '🧊'],
+    ['Which organ do we breathe with?', 'Lungs', 'Stomach', 'Brain', '🫁'], ['The moon shines because it reflects...', 'Sunlight', 'Lava', 'Starlight from Mars', '🌙'],
+    ['A food chain usually starts with...', 'Plants', 'Wolves', 'People', '🌿'], ['Which one is renewable energy?', 'Wind', 'Coal', 'Gasoline', '🌬️'],
+    ['Which part of the body controls everything else?', 'Brain', 'Knee', 'Hair', '🧠'], ['What do we call melted rock that comes out of a volcano?', 'Lava', 'Ice', 'Sand', '🌋'],
+    ['Sound travels as...', 'Vibrations', 'Light', 'Smoke', '🔊']
+  ]
+};
+const NAMES = ['Sam', 'Mia', 'Leo', 'Ava', 'Ben', 'Zoe', 'Max', 'Lily'];
+const COLORS = ['red', 'blue', 'green', 'yellow', 'pink', 'orange'];
+const STUFF = [['ball', '⚽'], ['hat', '🧢'], ['kite', '🪁'], ['bike', '🚲'], ['boat', '⛵'], ['car', '🚗']];
+const PLACES2 = [['the park', '🏞️'], ['the lake', '🏞️'], ['the farm', '🚜'], ['school', '🏫'], ['the store', '🏪'], ['the beach', '🏖️']];
+const SAME = [['happy', 'glad'], ['big', 'large'], ['fast', 'quick'], ['small', 'tiny'], ['shut', 'close'], ['begin', 'start'], ['shout', 'yell'], ['jump', 'leap']];
+const OPPOSITE = [['hot', 'cold'], ['up', 'down'], ['day', 'night'], ['wet', 'dry'], ['full', 'empty'], ['loud', 'quiet'], ['early', 'late'], ['heavy', 'light']];
+const choiceQ = (stat, key, text, right, wrongs, pic, say, hint) => ({ type: 'choice', stat, key, text, pic: pic || '', ans: right, choices: shuffle([right, ...new Set(wrongs.filter(w => w !== right))]), say: say || text, hint: hint || '' });
+function makeReading() {
+  const L = learn.level, r = Math.random(), nm = pick(NAMES);
+  if (L === 'easy' && r < 0.5) {
+    const [w, e] = pick(WORDS.easy), others = shuffle(WORDS.easy.filter(x => x[0] !== w)).slice(0, 2).map(x => x[0]);
+    return Object.assign(choiceQ('read', 'pic:' + w, 'Which word matches the picture?', w, others, e, 'Which word matches the picture?'), { bigPic: true });
+  }
+  if (L !== 'hard' && r < 0.8) {
+    const c = pick(COLORS), [s, e] = pick(STUFF);
+    return choiceQ('read', 'color', `${nm} has a ${c} ${s}. What color is the ${s}?`, c, shuffle(COLORS.filter(x => x !== c)).slice(0, 2), e, `${nm} has a ${c} ${s}. What color is the ${s}?`, 'Look for the color word in the sentence.');
+  }
+  if (L !== 'hard') {
+    const [pl, e] = pick(PLACES2);
+    return choiceQ('read', 'where', `${nm} rode a bike to ${pl}. Where did ${nm} go?`, pl, shuffle(PLACES2.filter(x => x[0] !== pl)).slice(0, 2).map(x => x[0]), e, null, 'Find the word after "to".');
+  }
+  if (r < 0.35) { const [a, b] = pick(SAME); return choiceQ('read', 'same:' + a, `Which word means the same as "${a}"?`, b, shuffle(SAME.filter(x => x[0] !== a)).slice(0, 2).map(x => x[1]), '📖'); }
+  if (r < 0.7) { const [a, b] = pick(OPPOSITE); return choiceQ('read', 'opp:' + a, `What is the opposite of "${a}"?`, b, shuffle(OPPOSITE.filter(x => x[0] !== a)).slice(0, 2).map(x => x[1]), '🔄'); }
+  const [pl] = pick(PLACES2), c = pick(COLORS), [s] = pick(STUFF), why = pick([['it was raining', 'an umbrella', ['sunglasses', 'a kite']], ['it was dark', 'a flashlight', ['a spoon', 'a sandwich']], ['it was cold', 'a warm coat', ['shorts', 'a fan']]]);
+  return choiceQ('read', 'why', `${nm} took a ${c} ${s} to ${pl}. Because ${why[0]}, ${nm} also packed ${why[1]}. What else did ${nm} pack?`, why[1], why[2], '📖', null, 'Read the second sentence again.');
+}
+const CLOCKS = ['🕐', '🕑', '🕒', '🕓', '🕔', '🕕', '🕖', '🕗', '🕘', '🕙', '🕚', '🕛'];
+function makeMathMore() {
+  const L = learn.level, r = Math.random();
+  if (L === 'easy') {
+    if (r < 0.35) { const sh = pick([['triangle', 3, '🔺'], ['square', 4, '🟥'], ['rectangle', 4, '▬'], ['pentagon', 5, '⬠']]); return choiceQ('math', 'sides:' + sh[0], `How many sides does a ${sh[0]} have?`, String(sh[1]), [String(sh[1] + 1), String(sh[1] - 1)], sh[2]); }
+    if (r < 0.7) { const a = ri(1, 20), b = a + pick([-1, 1]) * ri(1, 6) || a + 2; return choiceQ('math', 'bigger', 'Which number is bigger?', String(Math.max(a, b)), [String(Math.min(a, b))], ''); }
+    const st = pick([1, 2, 5]), s0 = ri(0, 8) * st; return choiceQ('math', 'next' + st, `What comes next? ${s0}, ${s0 + st}, ${s0 + 2 * st}, ?`, String(s0 + 3 * st), [String(s0 + 3 * st + 1), String(s0 + 2 * st)], '', null, `Each number goes up by ${st}.`);
+  }
+  if (L === 'medium') {
+    if (r < 0.3) { const h = ri(1, 12); return choiceQ('math', 'clock', 'What time does the clock show?', `${h} o'clock`, [`${h % 12 + 1} o'clock`, `${(h + 10) % 12 + 1} o'clock`], CLOCKS[h - 1], null, 'The short hand points to the hour.'); }
+    if (r < 0.55) { const d = ri(1, 6), n = ri(0, 4), c = d * 10 + n * 5; return choiceQ('math', 'coins', `${d} dimes and ${n} nickels. How many cents?`, `${c}¢`, [`${c + 5}¢`, `${Math.max(5, c - 10)}¢`], '🪙', null, 'A dime is 10 cents and a nickel is 5.'); }
+    if (r < 0.8) { const n = ri(1, 40); return choiceQ('math', 'evenodd', `Is ${n} even or odd?`, n % 2 ? 'Odd' : 'Even', [n % 2 ? 'Even' : 'Odd'], '', null, 'Even numbers end in 0, 2, 4, 6 or 8.'); }
+    const n = ri(11, 99); return choiceQ('math', 'tens', `How many tens are in ${n}?`, String(Math.floor(n / 10)), [String(n % 10 || 1), String(Math.floor(n / 10) + 1)], '', null, 'Look at the first digit.');
+  }
+  if (r < 0.25) { const n = ri(2, 12) * 2; return choiceQ('math', 'half', `What is half of ${n}?`, String(n / 2), [String(n / 2 + 1), String(n * 2)], '🍕'); }
+  if (r < 0.5) { const n = ri(100, 999), place = pick([['hundreds', 0], ['tens', 1], ['ones', 2]]); const dgt = String(n)[place[1]]; return choiceQ('math', 'place:' + place[0], `Which digit is in the ${place[0]} place of ${n}?`, dgt, [...new Set([...String(n), '0', '9'])].filter(x => x !== dgt).slice(0, 2), ''); }
+  if (r < 0.75) { const s = ri(2, 9); return choiceQ('math', 'perim', `A square has sides of ${s} cm. What is the perimeter (all the way around)?`, `${s * 4} cm`, [`${s * 2} cm`, `${s * s} cm`], '🟦', null, 'Add all four sides.'); }
+  const a = ri(2, 9), b = ri(2, 9); return choiceQ('math', 'div', `${a * b} ÷ ${a} = ?`, String(b), [String(b + 1), String(a)], '', `What is ${a * b} divided by ${a}?`, `Think: ${a} times what makes ${a * b}?`);
+}
+function makeScience() {
+  const [text, right, w1, w2, pic] = weightedPick(SCIENCE[learn.level], prog.sci, it => it[0]);
+  return choiceQ('sci', text, text, right, [w1, w2], pic || '🔬');
+}
+// Bible characters: [name, picture, description]. The first time a character comes up the child reads their story;
+// after that the description comes back as "Which Bible character is this?"
+const BIBLE = [
+  ['Noah', '🚢', 'God asked him to build a huge boat called an ark. He brought the animals in two by two before a great flood. Afterwards God put a rainbow in the sky as a promise.'],
+  ['Moses', '🌊', 'As a baby he was hidden in a basket by the river. When he grew up, God helped him lead the Israelites out of Egypt, and the Red Sea parted so they could cross. God gave him the Ten Commandments.'],
+  ['David', '🪨', 'A shepherd boy who beat the giant Goliath with a sling and one stone. Later he became king of Israel and wrote many psalms.'],
+  ['Daniel', '🦁', 'He kept praying to God even when the king made it against the law. He was thrown into a den of lions, but God shut the lions\' mouths.'],
+  ['Jonah', '🐋', 'God sent him to the city of Nineveh, but he ran away on a ship. A big fish swallowed him, and after three days it spat him out onto dry land.'],
+  ['Abraham', '⭐', 'God promised him as many children and grandchildren as the stars in the sky. He trusted God and left his home for a new land. His son was Isaac.'],
+  ['Joseph', '🧥', 'His father gave him a coat of many colors. His brothers sold him as a slave, but God made him a leader in Egypt, and he forgave his brothers.'],
+  ['Mary', '👶', 'An angel told her she would be the mother of Jesus. She laid baby Jesus in a manger in Bethlehem.'],
+  ['Peter', '🎣', 'A fisherman who became one of Jesus\' twelve disciples. He walked on the water toward Jesus until he got scared and began to sink.'],
+  ['Zacchaeus', '🌳', 'A short tax collector who climbed a tree to see Jesus. After Jesus visited his house, he paid back four times what he had cheated.'],
+  ['Esther', '👑', 'A brave queen who went to the king without being invited, to save her people from a wicked plan.'],
+  ['Ruth', '🌾', 'She stayed with her mother-in-law Naomi and said, "Where you go, I will go." She gathered grain in the fields of Boaz, who later married her.'],
+  ['Samuel', '🕯️', 'As a boy serving in the temple, he heard God call his name in the night. He answered, "Speak, for your servant is listening."'],
+  ['Elijah', '🔥', 'A prophet who was fed by ravens. When he prayed on Mount Carmel, God sent fire from heaven. Later he went up to heaven in a whirlwind.'],
+  ['Joshua', '🎺', 'He led the Israelites into the promised land after Moses. The walls of Jericho fell after the people marched around the city and blew their trumpets.'],
+  ['Paul', '✉️', 'A bright light blinded him on the road to Damascus, and he became a follower of Jesus. He traveled far to tell people about Jesus and wrote many letters in the Bible.'],
+  ['Solomon', '🏛️', 'A king who asked God for wisdom instead of riches. He built a great temple in Jerusalem.'],
+  ['Gideon', '🏺', 'God helped him defeat a huge army with only 300 men carrying trumpets and torches hidden in jars.'],
+  ['Samson', '💪', 'God gave him amazing strength, and his strength was tied to his long hair.'],
+  ['Adam', '🍎', 'The first man God made. He lived with Eve in the Garden of Eden.']
+];
+function makeBible() {
+  const pool = BIBLE.slice(0, learn.level === 'easy' ? 10 : learn.level === 'medium' ? 15 : 20);
+  prog.bibleSeen = prog.bibleSeen || [];
+  const unseen = pool.filter(c => !prog.bibleSeen.includes(c[0])), seen = pool.filter(c => prog.bibleSeen.includes(c[0]));
+  if (unseen.length && (seen.length < 2 || Math.random() < 0.4)) {
+    const [name, pic, desc] = pick(unseen);
+    return { type: 'story', stat: 'bible', key: name, name, pic, text: `${name}: ${desc}`, say: `This is ${name}. ${desc}`, hint: '' };
+  }
+  const [name, pic, desc] = weightedPick(seen, prog.bible, c => c[0]);
+  const others = shuffle(pool.filter(c => c[0] !== name)).slice(0, 2).map(c => c[0]);
+  return choiceQ('bible', name, `Which Bible character is this? ${desc}`, name, others, '📜', `Which Bible character is this? ${desc}`, `It starts with ${name[0]}.`);
+}
+// Subjects the player picked in Settings: read, write (spelling), math (sums plus shapes, time, money...), sci, bible
+const SUBJECTS = { read: ['📖', 'Reading'], write: ['✏️', 'Writing'], math: ['➕', 'Math'], sci: ['🔬', 'Science'], bible: ['📜', 'Bible'] };
 function makeQuestion() {
-  const t = learn.topics === 'math' ? 'math' : learn.topics === 'spell' ? 'spell' : (Math.random() < 0.55 ? 'math' : 'spell');
-  return t === 'math' ? makeMath() : makeSpell();
+  const on = Object.keys(SUBJECTS).filter(k => learn.subjects.includes(k));
+  const s = pick(on.length ? on : ['math', 'write']);
+  return s === 'read' ? makeReading() : s === 'write' ? makeSpell() : s === 'math' ? (Math.random() < 0.6 ? makeMath() : makeMathMore()) : s === 'sci' ? makeScience() : makeBible();
 }
 function makeJob(kind) {
   const [emoji, word] = KINDS[kind].thing, maxN = learn.level === 'easy' ? 10 : learn.level === 'medium' ? 15 : 20, r = Math.random();
@@ -2762,6 +2951,7 @@ function makeJob(kind) {
 const quizEl = $('quiz');
 const quiz = { open: false, house: null, step: 'door', q: null, input: '', filled: 0, wrong: 0, t0: 0, late: false, job: null, pts: 0 };
 function openQuiz(h) {
+  if (learnLeft() <= 0) { h.wait = true; toast('Learning time is done for today', 2.5); return; }
   Object.assign(quiz, { open: true, house: h, step: 'door', q: makeQuestion(), input: '', filled: 0, wrong: 0, used: [], t0: performance.now() / 1000, late: false });
   Object.assign(car, { vx: 0, vz: 0 });
   quizEl.hidden = false;
@@ -2778,13 +2968,27 @@ function renderQuiz() {
   $('qKind').style.color = k.css;
   const pad = $('qPad'), ans = $('qAnswer'), msg = $('qMsg'), focusAt = [...pad.children].indexOf(document.activeElement);
   msg.textContent = ''; msg.className = 'q-msg';
-  $('qTimer').hidden = quiz.step !== 'door' || !learn.timer;
+  $('qTimer').hidden = quiz.step !== 'door' || !learn.timer || q.type === 'story';
   if (quiz.step === 'door') {
     $('qStep').textContent = 'Unlock the door';
     $('qPic').textContent = q.type === 'spell' ? q.emoji : (q.pic || '');
-    $('qPic').classList.toggle('big', q.type === 'spell');
+    $('qPic').classList.toggle('big', q.type === 'spell' || !!q.bigPic || (q.type === 'choice' && [...q.pic].length <= 2));
     $('qText').textContent = q.text;
-    if (q.type === 'math') {
+    $('qText').classList.toggle('long', q.text.length > 40);
+    if (q.type === 'story') {
+      $('qStep').textContent = 'Read this Bible story to open the door';
+      ans.innerHTML = '';
+      pad.className = 'q-pad choices';
+      // The button wakes up after a moment so the story gets read, not skipped
+      const wait = Math.min(8, q.text.split(' ').length * 0.18) * 1000 - (performance.now() - quiz.t0 * 1000);
+      pad.innerHTML = `<button data-read="1" class="ok"${wait > 0 ? ' disabled' : ''}>I read it ✓</button>`;
+      if (wait > 0) setTimeout(() => { const b = pad.querySelector('[data-read]'); if (b) b.disabled = false; }, wait);
+    } else if (q.type === 'choice') {
+      ans.innerHTML = '';
+      pad.className = 'q-pad choices';
+      pad.innerHTML = q.choices.map((v, i) => `<button data-a="${i}"${quiz.used && quiz.used[i] ? ' disabled' : ''}></button>`).join('');
+      pad.querySelectorAll('button').forEach((b, i) => { b.textContent = q.choices[i]; });
+    } else if (q.type === 'math') {
       ans.innerHTML = `<span class="num">${quiz.input || '&nbsp;'}</span>`;
       pad.className = 'q-pad num';
       pad.innerHTML = [1, 2, 3, 4, 5, 6, 7, 8, 9].map(d => `<button data-d="${d}">${d}</button>`).join('') + '<button data-d="back" aria-label="Delete">⌫</button><button data-d="0">0</button><button data-d="ok" class="ok">Check</button>';
@@ -2816,7 +3020,7 @@ function quizFeedback(text, good) {
   if (!good) { quizEl.classList.remove('shake'); void quizEl.offsetWidth; quizEl.classList.add('shake'); }
 }
 function recordAnswer(q, ok) {
-  const st = q.type === 'math' ? prog.math : prog.spell, it = st.items[q.key] || (st.items[q.key] = { r: 0, w: 0, late: 0 });
+  const st = prog[q.stat || (q.type === 'math' ? 'math' : 'spell')], it = st.items[q.key] || (st.items[q.key] = { r: 0, w: 0, late: 0 });
   if (ok) { it.r++; if (quiz.late) { st.late++; it.late++; } else st.right++; } else { it.w++; st.wrong++; }
 }
 function doorSolved() {
@@ -2840,6 +3044,21 @@ function quizPress(btn) {
     return;
   }
   if (quiz.step !== 'door') return;
+  if (q.type === 'story') {
+    if (!btn.dataset.read) return;
+    if (!prog.bibleSeen.includes(q.name)) prog.bibleSeen.push(q.name);
+    doorSolved(); return;
+  }
+  if (q.type === 'choice') {
+    const i = btn.dataset.a;
+    if (i == null) return;
+    if (q.choices[i] === q.ans) { doorSolved(); return; }
+    quiz.wrong++; recordAnswer(q, false);
+    quiz.used = quiz.used || []; quiz.used[i] = true; btn.disabled = true;
+    quizFeedback(quiz.wrong >= 2 && q.hint ? `Hint: ${q.hint}` : 'Not that one, try again!', false);
+    if (quiz.wrong >= 2 && q.hint) speak(q.hint);
+    return;
+  }
   if (q.type === 'math') {
     const d = btn.dataset.d;
     if (d === 'back') quiz.input = quiz.input.slice(0, -1);
@@ -2886,7 +3105,7 @@ function collectReward() {
 }
 quizEl.addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; if (b.id === 'qSpeak') { speak(quiz.step === 'job' ? quiz.job.say : quiz.q.say); return; } if (b.id === 'qClose') { leaveHouse(); return; } quizPress(b); });
 // Leaving without answering: the house waits until you drive away and come back
-function leaveHouse() { if (quiz.house) quiz.house.wait = true; closeQuiz(); toast('The house will wait for you'); }
+function leaveHouse() { if (quiz.house) quiz.house.wait = true; closeQuiz(); if (!quiz.house || !quiz.house.practice) toast('The house will wait for you'); }
 function quizKey(e) {
   if (e.code === 'Escape') { leaveHouse(); return; }
   const pad = $('qPad');
@@ -2895,6 +3114,8 @@ function quizKey(e) {
     if (d) quizPress(pad.querySelector(`[data-d="${d[1] || d[2]}"]`));
     if (e.code === 'Backspace') quizPress(pad.querySelector('[data-d="back"]'));
     if (e.code === 'Enter' || e.code === 'NumpadEnter') quizPress(pad.querySelector('[data-d="ok"]'));
+  } else if (quiz.step === 'door' && quiz.q.type === 'choice' && /^Digit[1-4]$/.test(e.code)) {
+    const b = pad.querySelector(`[data-a="${+e.code.slice(5) - 1}"]`); if (b && !b.disabled) quizPress(b);
   } else if (quiz.step === 'door' && /^Key[A-Z]$/.test(e.code)) {
     const c = e.code.slice(3), b = [...pad.querySelectorAll('button')].find(x => !x.disabled && x.textContent === c && c === quiz.q.word[quiz.filled]) || [...pad.querySelectorAll('button')].find(x => !x.disabled && x.textContent === c);
     if (b) quizPress(b);
@@ -2903,7 +3124,7 @@ function quizKey(e) {
   } else if (quiz.step === 'reward' && (e.code === 'Enter' || e.code === 'Space')) collectReward();
 }
 function updateQuiz() {
-  if (quiz.step !== 'door' || !learn.timer) return;
+  if (!quiz.open || quiz.step !== 'door' || !learn.timer || quiz.q.type === 'story') return;
   const left = learn.timer - (performance.now() / 1000 - quiz.t0), bar = $('qBar');
   bar.style.width = Math.max(0, left / learn.timer * 100) + '%';
   bar.classList.toggle('low', left < learn.timer * 0.25);
@@ -3008,6 +3229,9 @@ function updateGemBar(force) {
   $('gasFill').style.background = `hsl(${Math.round(f * 120)}, 72%, 45%)`;
   $('gasKm').textContent = prog.fuel > 0 ? `${fuelRangeKm().toFixed(1)} km left` : 'Empty!';
   $('gasBar').classList.toggle('low', f < 0.25);
+  const tl = rideLeft();
+  $('timeLeft').textContent = tl === Infinity ? '' : `⏱ ${mins(tl)}`;
+  $('timeLeft').classList.toggle('low', tl < 120);
   $('fuelLvl').style.width = (prog.fuel / tankSize() * 100) + '%';
   document.body.classList.toggle('has-turbo', !!prog.powers.turbo);
   document.body.classList.toggle('has-jump', !!prog.powers.jump);
@@ -3109,17 +3333,45 @@ function refreshVehicleState() {
 // ---- Parent corner ----
 const parentEl = $('parent');
 function renderParent() {
-  for (const id of ['level', 'topics', 'timer', 'voice', 'freeVehicles']) $('p-' + id).value = String(learn[id]);
+  for (const id of ['timer', 'voice', 'freeVehicles']) $('p-' + id).value = String(learn[id]);
+  if (player) {
+    $('p-who').textContent = `Settings for ${player.name}. Each player has their own.`;
+    $('p-grade').value = player.grade || '3'; $('p-age').value = String(player.age || 8);
+  }
+  $('p-ride').value = String(learn.limits.ride); $('p-learnMin').value = String(learn.limits.learn);
+  const d = playDay();
+  $('p-chores').innerHTML = '';
+  for (const c of learn.chores) {
+    const b = document.createElement('button');
+    b.setAttribute('role', 'checkbox'); b.setAttribute('aria-checked', String(d.done.includes(c)));
+    b.textContent = (d.done.includes(c) ? '✓ ' : '') + c;
+    b.addEventListener('click', () => { d.done = d.done.includes(c) ? d.done.filter(x => x !== c) : [...d.done, c]; saveProg(); renderParent(); });
+    $('p-chores').append(b);
+  }
+  const rl = learn.limits.ride ? learn.limits.ride + 10 * d.done.length : 0;
+  $('p-today').textContent = `Today: riding ${Math.floor(d.ride / 60)} of ${rl ? rl + ' min' : 'unlimited'}${d.done.length ? ` (includes +${10 * d.done.length} for chores)` : ''} · learning ${Math.floor(d.learn / 60)} of ${learn.limits.learn ? learn.limits.learn + ' min' : 'unlimited'}`;
   const line = (st, label) => {
     const tot = st.right + st.late, tries = tot + st.wrong;
     const tricky = Object.entries(st.items).filter(([, v]) => v.w > 0).sort((a, b) => b[1].w - a[1].w).slice(0, 6).map(([k, v]) => `${k.replace('-', '−')} <small>(${v.w}✗ ${v.r}✓)</small>`);
     return `<p><b>${label}:</b> ${tot} solved (${st.right} in time, ${st.late} after the timer), ${st.wrong} wrong tries${tries ? ` · ${Math.round(tot / tries * 100)}% first-time accuracy` : ''}</p>${tricky.length ? `<p class="tricky">Needs practice: ${tricky.join(', ')}</p>` : ''}`;
   };
-  $('p-stats').innerHTML = line(prog.math, 'Math') + line(prog.spell, 'Spelling') + `<p>Houses opened: <b>${prog.houses}</b> · Best streak: <b>${prog.bestStreak}</b> · Badges: <b>${prog.badges.length}</b></p>`;
+  $('p-stats').innerHTML = line(prog.math, 'Math') + line(prog.spell, 'Writing') + line(prog.read, 'Reading') + line(prog.sci, 'Science') + line(prog.bible, 'Bible') + `<p>Bible stories read: <b>${prog.bibleSeen.length}</b> of ${BIBLE.length}</p>` + `<p>Houses opened: <b>${prog.houses}</b> · Best streak: <b>${prog.bestStreak}</b> · Badges: <b>${prog.badges.length}</b></p>`;
 }
-$('parentBtn').addEventListener('click', () => { $('settings').hidden = true; parentEl.hidden = false; renderParent(); });
+function openParent() { $('settings').hidden = true; parentEl.hidden = false; renderParent(); }
+$('parentBtn').addEventListener('click', () => { $('settings').hidden = true; askPin(openParent); });
+$('p-ride').addEventListener('change', e => { learn.limits.ride = +e.target.value; store.set('bcr-learn-v1', learn); renderParent(); });
+$('p-learnMin').addEventListener('change', e => { learn.limits.learn = +e.target.value; store.set('bcr-learn-v1', learn); renderParent(); });
+$('p-grade').addEventListener('change', e => { if (!player) return; player.grade = e.target.value; savePlayer(); applyLevel(); store.set('bcr-learn-v1', learn); });
+$('p-age').addEventListener('change', e => { if (!player) return; player.age = +e.target.value; savePlayer(); });
+$('p-choreForm').addEventListener('submit', e => {
+  e.preventDefault();
+  const c = $('p-choreName').value.trim().slice(0, 28);
+  if (c && !learn.chores.includes(c)) { learn.chores.push(c); store.set('bcr-learn-v1', learn); }
+  $('p-choreName').value = ''; renderParent();
+});
+$('p-pin').addEventListener('click', () => { rawStore.set('bcr-parent-pin', ''); parentEl.hidden = true; askPin(openParent); });
 $('parentDone').addEventListener('click', () => { parentEl.hidden = true; });
-for (const id of ['level', 'topics', 'timer', 'voice', 'freeVehicles']) $('p-' + id).addEventListener('change', e => {
+for (const id of ['timer', 'voice', 'freeVehicles']) $('p-' + id).addEventListener('change', e => {
   const v = e.target.value;
   learn[id] = id === 'timer' ? +v : (id === 'voice' || id === 'freeVehicles') ? v === 'true' : v;
   store.set('bcr-learn-v1', learn);
@@ -3128,7 +3380,7 @@ for (const id of ['level', 'topics', 'timer', 'voice', 'freeVehicles']) $('p-' +
 let resetArmed = 0;
 $('p-reset').addEventListener('click', e => {
   if (performance.now() - resetArmed > 4000) { resetArmed = performance.now(); e.currentTarget.textContent = 'Tap again to erase all progress'; return; }
-  Object.assign(prog, { coins: 0, gems: 0, stars: 0, fuel: 20, owned: ['bike'], up: { engine: 0, tires: 0, tank: 0 }, paint: {}, powers: {}, badges: [], houses: 0, fuelHouses: 0, streak: 0, bestStreak: 0, chest: '', math: BLANK_STATS(), spell: BLANK_STATS() });
+  Object.assign(prog, { coins: 0, gems: 0, stars: 0, fuel: 20, owned: ['bike'], up: { engine: 0, tires: 0, tank: 0 }, paint: {}, powers: {}, badges: [], houses: 0, fuelHouses: 0, streak: 0, bestStreak: 0, chest: '', math: BLANK_STATS(), spell: BLANK_STATS(), read: BLANK_STATS(), sci: BLANK_STATS(), bible: BLANK_STATS(), bibleSeen: [], day: prog.day });
   saveProg(); refreshVehicleState(); renderParent(); updateGemBar(true);
   e.currentTarget.textContent = 'Progress erased';
 });
@@ -3701,7 +3953,7 @@ function openLogin() {
     const pg = rawStore.get(pkey('bcr-prog-v1', pl), {});
     const row = document.createElement('div');
     row.className = 'srow' + (pl === player ? ' me' : '');
-    row.innerHTML = `<span class="si">🧑</span><span class="sn"><b></b><small>🪙 ${pg.coins | 0} · 💎 ${pg.gems | 0} · ⭐ ${pg.stars | 0} · rides as ${RIDERS[clamp(rawStore.get(pkey('bcr-rider-v1', pl), 0) | 0, 0, RIDERS.length - 1)].name}</small></span>`;
+    row.innerHTML = `<span class="si">🧑</span><span class="sn"><b></b><small>${pl.age ? `age ${pl.age} · ` : ''}${pl.grade ? `${gradeName(pl.grade)} · ` : ''}🪙 ${pg.coins | 0} · 💎 ${pg.gems | 0} · ⭐ ${pg.stars | 0} · rides as ${RIDERS[clamp(rawStore.get(pkey('bcr-rider-v1', pl), 0) | 0, 0, RIDERS.length - 1)].name}</small></span>`;
     row.querySelector('b').textContent = pl.name;
     const b = document.createElement('button');
     b.textContent = pl === player ? 'Playing' : 'Play';
@@ -3718,18 +3970,116 @@ function switchPlayer(pl) {
   rawStore.set('bcr-player-v1', pl.id);
   location.reload();
 }
-function addPlayer(name) {
+function addPlayer(name, age, grade) {
   name = name.trim().slice(0, 14);
   if (!name) { $('loginName').focus(); return; }
   if (players.some(pl => pl.name.toLowerCase() === name.toLowerCase())) { toast(`${name} is already here · tap Play next to the name`); return; }
-  const pl = { id: Date.now().toString(36), name };
+  if (!age) { toast('Pick your age'); $('loginAge').focus(); return; }
+  if (!grade) { toast('Pick your grade'); $('loginGrade').focus(); return; }
+  const pl = { id: Date.now().toString(36), name, age: +age, grade };
   // The very first player keeps the progress saved before players existed
   if (!players.length) for (const k of PLAYER_KEYS) { const v = rawStore.get(k, undefined); if (v !== undefined) rawStore.set(pkey(k, pl), v); }
   players.push(pl);
   rawStore.set('bcr-players-v1', players);
   switchPlayer(pl);
 }
-$('loginForm').addEventListener('submit', e => { e.preventDefault(); addPlayer($('loginName').value); });
+$('loginForm').addEventListener('submit', e => { e.preventDefault(); addPlayer($('loginName').value, $('loginAge').value, $('loginGrade').value); });
+const GRADES = ['K', '1', '2', '3', '4', '5', '6'];
+const gradeName = g => g === 'K' ? 'Kindergarten' : `Grade ${g}`;
+const ageOpts = sel => [...Array(9)].map((_, i) => `<option value="${i + 4}">${sel ? '' : 'Age '}${i + 4}</option>`).join('');
+const gradeOpts = () => GRADES.map(g => `<option value="${g}">${gradeName(g)}</option>`).join('');
+$('loginAge').innerHTML = '<option value="">Age</option>' + ageOpts();
+$('loginGrade').innerHTML = '<option value="">Grade</option>' + gradeOpts();
+$('p-age').innerHTML = ageOpts(true);
+$('p-grade').innerHTML = gradeOpts();
+function savePlayer() { rawStore.set('bcr-players-v1', players); }
+
+// ---------- Settings: subjects and challenge ----------
+function renderSubjects() {
+  $('subjBox').innerHTML = Object.entries(SUBJECTS).map(([k, [ic, nm]]) => `<button data-s="${k}" aria-pressed="${learn.subjects.includes(k)}">${ic} ${nm}</button>`).join('');
+  $('levelSel').value = String(learn.adjust);
+}
+$('subjBox').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  const k = b.dataset.s, on = learn.subjects.includes(k);
+  if (on && learn.subjects.length === 1) { toast('Keep at least one subject'); return; }
+  learn.subjects = on ? learn.subjects.filter(x => x !== k) : [...learn.subjects, k];
+  store.set('bcr-learn-v1', learn); renderSubjects();
+});
+$('levelSel').addEventListener('change', e => { learn.adjust = +e.target.value; applyLevel(); store.set('bcr-learn-v1', learn); e.target.blur(); });
+renderSubjects();
+
+// ---------- Parent PIN ----------
+// A simple lock so the child can't change limits or tick chores; the PIN is shared by all players on this device
+const pinEl = $('pin');
+const pin = { then: null, mode: 'enter', a: 0, b: 0 };
+function askPin(then) {
+  pin.then = then;
+  const saved = rawStore.get('bcr-parent-pin', '');
+  pin.mode = saved ? 'enter' : 'set';
+  $('pinTitle').textContent = 'Parents only';
+  $('pinText').textContent = saved ? 'Enter the parent PIN.' : 'Choose a 4-digit parent PIN. You will need it to change time limits and chores.';
+  $('pinForgot').hidden = !saved;
+  $('pinInput').value = '';
+  pinEl.hidden = false;
+  setTimeout(() => $('pinInput').focus(), 50);
+}
+$('pinForm').addEventListener('submit', e => {
+  e.preventDefault();
+  const v = $('pinInput').value.trim();
+  if (pin.mode === 'set') {
+    if (!/^\d{4}$/.test(v)) { toast('Use 4 numbers'); return; }
+    rawStore.set('bcr-parent-pin', v); toast('Parent PIN saved');
+  } else if (pin.mode === 'reset') {
+    if (+v !== pin.a * pin.b) { toast('Not quite'); $('pinInput').value = ''; return; }
+    rawStore.set('bcr-parent-pin', ''); askPin(pin.then); return;
+  } else if (v !== rawStore.get('bcr-parent-pin', '')) { toast('Wrong PIN'); $('pinInput').value = ''; return; }
+  pinEl.hidden = true;
+  const f = pin.then; pin.then = null; if (f) f();
+});
+$('pinForgot').addEventListener('click', () => {
+  pin.mode = 'reset'; pin.a = ri(12, 19); pin.b = ri(6, 9);
+  $('pinTitle').textContent = 'Reset the PIN';
+  $('pinText').textContent = `Grown-up check: what is ${pin.a} × ${pin.b}?`;
+  $('pinForgot').hidden = true; $('pinInput').value = ''; $('pinInput').focus();
+});
+$('pinClose').addEventListener('click', () => { pinEl.hidden = true; pin.then = null; });
+
+// ---------- Daily time limits ----------
+const timeupEl = $('timeup');
+let limitWarn = 0, daySave = 0;
+function trackTime(dt, learning) {
+  const d = playDay();
+  if (learning) d.learn += dt; else d.ride += dt;
+  if ((daySave += dt) > 5) { daySave = 0; saveProg(); }
+  if (!learning && learn.limits.ride) {
+    const left = rideLeft();
+    if (left < 120 && limitWarn < 1) { limitWarn = 1; toast('2 minutes of riding left today', 2.5); }
+    if (left < 60 && limitWarn < 2) { limitWarn = 2; toast('1 minute of riding left!', 2.5); }
+    if (left > 120) limitWarn = 0;
+    if (left <= 0) openTimeUp();
+  }
+}
+function openTimeUp() {
+  Object.assign(car, { vx: 0, vz: 0 }); saveProg();
+  const ll = learnLeft(), canLearn = ll > 0;
+  $('tuPic').textContent = canLearn ? '🏁' : '🌙';
+  $('tuTitle').textContent = canLearn ? 'Riding time is done for today' : 'All done for today!';
+  $('tuText').textContent = canLearn
+    ? `Great riding! You can still earn points with practice questions${ll === Infinity ? '' : ` · ${mins(ll)} of learning time left`}. A parent can add riding time for chores.`
+    : 'Great work today. Come back tomorrow for more riding and gem houses. A parent can add riding time for chores.';
+  $('tuLearn').hidden = !canLearn;
+  timeupEl.hidden = false;
+  setTimeout(() => (canLearn ? $('tuLearn') : $('tuHome')).focus(), 50);
+}
+// Practice without driving: a gem house challenge that comes to you
+$('tuLearn').addEventListener('click', () => {
+  timeupEl.hidden = true;
+  const kind = pick(KIND_KEYS);
+  openQuiz({ kind, x: car.x, z: car.z, practice: true, ready: true, icon: {}, beam: {}, roof: {} });
+});
+$('tuHome').addEventListener('click', () => { timeupEl.hidden = true; goHome(); });
+$('tuParent').addEventListener('click', () => { timeupEl.hidden = true; askPin(openParent); });
 $('loginClose').addEventListener('click', () => { if (player) loginEl.hidden = true; });
 $('playerBtn').addEventListener('click', e => { openLogin(); e.currentTarget.blur(); });
 
@@ -3774,15 +4124,19 @@ function frame(now) {
   const dt = Math.min(0.05, (now - last) / 1000);
   last = now;
   if (phase !== 'drive') {
-    if (shopEl.hidden && parentEl.hidden && loginEl.hidden) updateHome(dt); else { pollGamepad(); home.sky.position.copy(camera.position); }
+    if (shopEl.hidden && parentEl.hidden && pinEl.hidden && (loginEl.hidden || phase === 'pick')) updateHome(dt); else { pollGamepad(); home.sky.position.copy(camera.position); }
     updateAudio(dt, lastInput);
     renderer.render(home.scene, camera);
     if (toastTimer > 0 && (toastTimer -= dt) <= 0) toastEl.classList.remove('show');
     requestAnimationFrame(frame);
     return;
   }
-  if (quiz.open || !shopEl.hidden || !parentEl.hidden) { pollGamepad(); updateQuiz(); lastInput = { steer: 0, throttle: 0, brake: 0, hand: false }; }
-  else { update(dt); if (car.crashT <= 0) updateLearn(dt, lastInput); }
+  if (quiz.open || !shopEl.hidden || !parentEl.hidden || !timeupEl.hidden || !pinEl.hidden) {
+    pollGamepad(); updateQuiz(); lastInput = { steer: 0, throttle: 0, brake: 0, hand: false };
+    if (quiz.open) trackTime(dt, true);
+    else if (timeupEl.hidden && parentEl.hidden && pinEl.hidden && rideLeft() <= 0) openTimeUp();
+  } else if (rideLeft() <= 0) openTimeUp();
+  else { update(dt); if (car.crashT <= 0) updateLearn(dt, lastInput); trackTime(dt, false); }
   updateGemBar();
   poseVehicle(dt);
   updateAnimals(dt);

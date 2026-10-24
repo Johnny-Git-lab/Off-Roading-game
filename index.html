@@ -397,6 +397,11 @@ body:not(.touch) .ride-btn::after { content: " · E"; opacity: 0.6; }
 .gasbar .tl { margin-left: 4px; color: var(--hud-fg); }
 .gasbar .tl.low { color: var(--bad); }
 @media (max-height: 500px) { .timeup { gap: 5px; } .timeup .q-pic.big { font-size: 34px; } .timeup h2 { font-size: 20px; } }
+.padtest { font-size: 13px; line-height: 1.45; padding: 6px 8px; border-radius: 8px; border: 1px solid var(--hud-line); background: rgba(14, 18, 15, 0.35); }
+.padtest b { color: var(--accent); }
+.padtest .ok { color: var(--good); }
+.padtest .bar { display: inline-block; width: 70px; height: 7px; border-radius: 4px; background: rgba(236, 230, 207, 0.18); vertical-align: middle; overflow: hidden; }
+.padtest .bar i { display: block; height: 100%; background: var(--accent); }
 /* The open game menu needs the top and right of the screen */
 .menu-open .gembar, .menu-open .pw, .menu-open .horn, .menu-open #pedal { display: none !important; }
 /* Walking always gets the turn and walk sliders, even with tilt steering on */
@@ -460,6 +465,8 @@ body:not(.touch) .ride-btn::after { content: " · E"; opacity: 0.6; }
     <option value="0">Just right for my grade</option>
     <option value="1">Harder</option>
   </select>
+  <span class="label">Game controller</span>
+  <div class="padtest" id="padTest" aria-live="polite">No controller found yet. Plug it in, then press any button on it.</div>
   <label class="label" for="camSel">Camera</label>
   <select id="camSel">
     <option value="chase">Chase · behind the vehicle</option>
@@ -2454,10 +2461,18 @@ function drawModeMap() {
 const pad = { steer: 0, throttle: 0, brake: 0, hand: false, prev: [], seen: false };
 function pollGamepad() {
   let gp = null;
-  try { for (const g of (navigator.getGamepads ? navigator.getGamepads() : [])) if (g && g.connected) { gp = g; break; } } catch (e) { /* not allowed here */ }
-  if (!gp) { pad.steer = pad.throttle = pad.brake = 0; pad.hand = false; return; }
+  // Prefer a controller the browser maps to the standard Xbox layout
+  try { for (const g of (navigator.getGamepads ? navigator.getGamepads() : [])) if (g && g.connected && (!gp || (g.mapping === 'standard' && gp.mapping !== 'standard'))) gp = g; } catch (e) { /* not allowed here */ }
+  if (!gp) { pad.steer = pad.throttle = pad.brake = 0; pad.hand = false; if (!$('settings').hidden) padTest(null); return; }
   if (!pad.seen) { pad.seen = true; toast('Controller connected · right trigger gas, left trigger brake'); }
-  const btn = i => gp.buttons[i] || { pressed: false, value: 0 };
+  // Some browsers report an unmapped layout where the triggers are axes 2 and 5 (-1 released, +1 pulled).
+  // Only trust such an axis after it has read "released" once, so a resting 0 isn't taken as half throttle.
+  const std = gp.mapping === 'standard';
+  pad.trig = pad.trig || {};
+  const axTrig = i => { const v = gp.axes[i]; if (std || v == null) return 0; if (v < -0.5) pad.trig[i] = true; return pad.trig[i] ? clamp((v + 1) / 2, 0, 1) : 0; };
+  const raw = i => gp.buttons[i] || { pressed: false, value: 0 };
+  const btn = i => i === 6 && !std ? { pressed: raw(6).pressed || axTrig(2) > 0.5, value: Math.max(raw(6).value, axTrig(2)) } : i === 7 && !std ? { pressed: raw(7).pressed || axTrig(5) > 0.5, value: Math.max(raw(7).value, axTrig(5)) } : raw(i);
+  if (!$('settings').hidden) padTest(gp, btn);
   const ax = gp.axes[0] || 0, dz = 0.12;
   let st = Math.abs(ax) < dz ? 0 : (ax - Math.sign(ax) * dz) / (1 - dz);
   if (btn(14).pressed) st = -1;
@@ -2467,7 +2482,7 @@ function pollGamepad() {
   pad.brake = Math.max(btn(6).value, btn(1).pressed ? 1 : 0, btn(13).pressed ? 1 : 0);
   pad.hand = btn(5).pressed;
   const edge = i => btn(i).pressed && !pad.prev[i];
-  const dlg = !pinEl.hidden ? pinEl : !timeupEl.hidden ? timeupEl : !loginEl.hidden ? loginEl : !quizEl.hidden ? quizEl : !shopEl.hidden ? shopEl : !parentEl.hidden ? parentEl : null;
+  const dlg = !pinEl.hidden ? pinEl : !timeupEl.hidden ? timeupEl : !loginEl.hidden ? loginEl : !quizEl.hidden ? quizEl : !shopEl.hidden ? shopEl : !parentEl.hidden ? parentEl : !$('settings').hidden ? $('settings') : null;
   if (dlg) { padDialog(dlg, edge); pad.prev = gp.buttons.map(b => b.pressed); pad.steer = pad.throttle = pad.brake = 0; return; }
   if (phase !== 'drive') { homePad(edge); pad.prev = gp.buttons.map(b => b.pressed); return; }
   if (edge(3)) cycleCamera();
@@ -2478,7 +2493,25 @@ function pollGamepad() {
   if (edge(10)) useJump();
   pad.prev = gp.buttons.map(b => b.pressed);
 }
-addEventListener('gamepadconnected', () => { pad.seen = false; });
+addEventListener('gamepadconnected', () => { pad.seen = false; pad.trig = {}; });
+addEventListener('gamepaddisconnected', () => toast('Controller disconnected'));
+// Settings shows a live controller check: name, layout, and what is being pressed right now
+const PAD_NAMES = ['A', 'B', 'X', 'Y', 'LB', 'RB', 'LT', 'RT', 'View', 'Menu', 'L-stick', 'R-stick', 'Up', 'Down', 'Left', 'Right', 'Xbox'];
+let padTestT = 0;
+function padTest(gp, btn) {
+  const now = performance.now(); if (now - padTestT < 100) return; padTestT = now;
+  const el = $('padTest');
+  if (!gp) { el.textContent = 'No controller found yet. Plug it in, then press any button on it.'; return; }
+  const name = gp.id.replace(/\(.*?Vendor.*?\)/i, '').trim().slice(0, 48) || 'Controller';
+  const down = PAD_NAMES.filter((_, i) => btn(i).pressed);
+  const bar = v => `<span class="bar"><i style="width:${Math.round(v * 100)}%"></i></span>`;
+  const st = gp.axes[0] || 0;
+  el.innerHTML = `<span class="ok">✓ Connected:</span> <span id="padName"></span><br>`
+    + (gp.mapping === 'standard' ? '<span class="ok">✓ Standard Xbox layout</span>' : 'Unusual layout · triggers read from the sticks')
+    + `<br>Steer ${st < -0.15 ? '◀' : st > 0.15 ? '▶' : '·'} · Gas ${bar(btn(7).value)} · Brake ${bar(btn(6).value)}`
+    + `<br>Pressed: <b>${down.length ? down.join(' + ') : 'nothing'}</b>`;
+  $('padName').textContent = name;
+}
 // In a dialog the D-pad moves between buttons (nearest one in that direction), A presses, B closes
 function padDialog(dlg, edge) {
   const items = [...dlg.querySelectorAll('button:not(:disabled), select')].filter(b => b.offsetParent);
@@ -2500,7 +2533,7 @@ function padDialog(dlg, edge) {
     if (best) best.focus();
   }
   if (edge(0)) { if (cur) cur.click(); else (items.find(b => !b.closest('.q-tools')) || items[0]).focus(); }
-  if (edge(1)) { if (dlg === quizEl) leaveHouse(); else if (dlg !== timeupEl && (dlg !== loginEl || player)) dlg.hidden = true; }
+  if (edge(1)) { if (dlg === quizEl) leaveHouse(); else if (dlg !== timeupEl && dlg.id !== 'settings' && (dlg !== loginEl || player)) dlg.hidden = true; }
 }
 
 // ---------- Animals ----------

@@ -44,6 +44,7 @@ body { margin: 0; overflow: hidden; background: var(--sky); color: var(--hud-fg)
 .glass { background: var(--hud-glass); border: 1px solid var(--hud-line); border-radius: 10px; text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7); }
 button { font: inherit; color: inherit; }
 button:focus-visible, select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.quiz button:focus, .shop button:focus { outline: 3px solid var(--accent); outline-offset: 2px; }
 .label { font-family: var(--font-display); font-size: 12px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--hud-dim); }
 
 /* Top-left: trail map and camera switch */
@@ -254,6 +255,105 @@ body:not(.touch) .ride-btn::after { content: " · E"; opacity: 0.6; }
   .spin-hint { display: none; }
   .ride-btn { bottom: calc(var(--edge) + 76px + env(safe-area-inset-bottom, 0px)); padding: 10px 18px; font-size: 19px; }
 }
+/* Points bar, superpower buttons, gem house challenge, shop */
+.gembar { position: fixed; top: calc(var(--edge) + env(safe-area-inset-top, 0px)); left: 50%; transform: translateX(-50%); display: flex; gap: 5px; z-index: 2; width: max-content; max-width: calc(100% - 16px); white-space: nowrap; }
+.gembar button {
+  position: relative; display: grid; grid-template-columns: auto auto; grid-template-rows: auto auto; column-gap: 5px; align-items: center; min-width: 74px; padding: 3px 8px 4px;
+  border-radius: 10px; border: 1px solid var(--hud-line); background: var(--hud-glass); cursor: pointer; text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7); font-variant-numeric: tabular-nums;
+}
+.gembar .ic { grid-row: 1 / span 2; font-size: 20px; line-height: 1; }
+.gembar .v { font: 800 16px/1.05 var(--font-display); text-align: left; }
+.gembar .d { font-size: 11px; color: var(--hud-dim); text-align: left; }
+.gembar button[aria-pressed="true"] { border-color: var(--accent); background: rgba(242, 163, 58, 0.3); }
+.gembar .tank { position: absolute; left: 6px; right: 6px; bottom: 1px; height: 3px; border-radius: 2px; background: rgba(236, 230, 207, 0.2); overflow: hidden; }
+.gembar .tank i { display: block; height: 100%; width: 100%; background: var(--good); }
+.gembar .low .tank i { background: var(--bad); }
+.gembar .low { animation: blink 1s steps(2) infinite; }
+@keyframes blink { 50% { border-color: var(--bad); background: rgba(224, 83, 61, 0.35); } }
+.home .gembar { display: none; }
+.pw { position: fixed; display: none; width: 58px; height: 58px; border-radius: 50%; cursor: pointer; touch-action: none; font: 800 11px var(--font-display); letter-spacing: 0.08em; right: calc(var(--edge) + 80px + env(safe-area-inset-right, 0px)); }
+#turboBtn { bottom: calc(var(--edge) + 4px + env(safe-area-inset-bottom, 0px)); }
+#jumpBtn { bottom: calc(var(--edge) + 68px + env(safe-area-inset-bottom, 0px)); }
+.touch.has-turbo:not(.home) #turboBtn, .touch.has-jump:not(.home) #jumpBtn { display: block; }
+.quiz, .shop {
+  position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(460px, calc(100% - 24px)); max-height: calc(100vh - 20px); max-height: calc(100dvh - 20px);
+  overflow-y: auto; padding: 12px 14px 14px; display: grid; gap: 8px; z-index: 8; text-align: center; background: rgba(18, 24, 20, 0.94);
+}
+.quiz.shake { animation: shake 0.35s; }
+@keyframes shake { 25% { transform: translate(calc(-50% - 8px), -50%); } 75% { transform: translate(calc(-50% + 8px), -50%); } }
+.q-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.q-head h2 { margin: 0; font: 800 22px var(--font-display); letter-spacing: 0.05em; text-transform: uppercase; }
+.q-kind { font: 800 18px var(--font-display); letter-spacing: 0.06em; text-transform: uppercase; }
+.q-tools { display: flex; gap: 6px; }
+.q-tools button { width: 40px; height: 40px; border-radius: 10px; border: 1px solid var(--hud-line); background: rgba(236, 230, 207, 0.08); cursor: pointer; font-size: 18px; }
+.q-step { font-size: 14px; color: var(--hud-dim); }
+.q-timer { height: 8px; border-radius: 4px; background: rgba(236, 230, 207, 0.15); overflow: hidden; }
+.q-timer div { height: 100%; width: 100%; background: var(--good); transition: width 0.1s linear; }
+.q-timer div.low { background: var(--bad); }
+.q-pic { font-size: 26px; line-height: 1.25; min-height: 0; word-break: break-all; }
+.q-pic.big { font-size: 64px; }
+.q-pic:empty { display: none; }
+.q-text { font: 800 34px/1.1 var(--font-display); letter-spacing: 0.02em; }
+.q-answer { display: flex; justify-content: center; gap: 6px; min-height: 0; }
+.q-answer:empty { display: none; }
+.q-answer .num { min-width: 110px; padding: 4px 14px; border-radius: 10px; border: 2px solid var(--accent); font: 800 36px/1.1 var(--font-display); }
+.q-answer .slot { width: 42px; height: 50px; border-bottom: 3px solid var(--hud-dim); font: 800 34px/50px var(--font-display); }
+.q-answer .slot.on { border-color: var(--good); color: var(--good); }
+.q-pad { display: grid; gap: 7px; }
+.q-pad button {
+  min-height: 52px; border-radius: 12px; border: 1px solid var(--hud-line); background: rgba(236, 230, 207, 0.1); cursor: pointer;
+  font: 800 26px var(--font-display); color: var(--hud-fg); touch-action: manipulation;
+}
+.q-pad button:active { transform: scale(0.96); }
+.q-pad button:disabled { opacity: 0.25; cursor: default; }
+.q-pad button.ok { background: var(--accent); border-color: var(--accent); color: #1c1608; font-size: 20px; text-transform: uppercase; }
+.q-pad button.glow { border-color: var(--good); box-shadow: 0 0 0 3px rgba(123, 216, 143, 0.5); }
+.q-pad.num { grid-template-columns: repeat(3, 1fr); }
+.q-pad.tiles { grid-template-columns: repeat(auto-fit, minmax(54px, 1fr)); }
+.q-pad.choices { grid-template-columns: repeat(auto-fit, minmax(90px, 1fr)); }
+.q-msg { min-height: 20px; font-size: 15px; font-weight: 600; }
+.q-msg.good { color: var(--good); }
+.q-msg.bad { color: var(--bad); }
+.shop { text-align: left; }
+.shop .bal { font: 700 18px var(--font-display); letter-spacing: 0.03em; }
+.shop h3 { margin: 6px 0 0; font: 700 13px var(--font-display); letter-spacing: 0.12em; text-transform: uppercase; color: var(--hud-dim); }
+.srow { display: grid; grid-template-columns: 34px 1fr auto; gap: 8px; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--hud-line); }
+.srow .si { font-size: 24px; text-align: center; }
+.srow .sn { display: grid; }
+.srow .sn small, .badge small { color: var(--hud-dim); font-size: 12px; }
+.srow button { padding: 8px 12px; border-radius: 8px; border: 0; background: var(--accent); color: #1c1608; cursor: pointer; font: 800 16px var(--font-display); white-space: nowrap; }
+.srow button.poor, .ride-btn.poor { background: #6b6455; color: #ece6cf; }
+.srow .sdone { font: 700 13px var(--font-display); color: var(--good); text-transform: uppercase; letter-spacing: 0.08em; }
+.paints { display: flex; flex-wrap: wrap; gap: 8px; }
+.paints button { width: 40px; height: 40px; border-radius: 50%; border: 2px solid rgba(255, 255, 255, 0.6); cursor: pointer; }
+.badges { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 6px; }
+.badge { display: grid; justify-items: center; gap: 1px; padding: 8px 6px; border-radius: 10px; border: 1px solid var(--hud-line); opacity: 0.55; text-align: center; }
+.badge.got { opacity: 1; border-color: var(--gold); background: rgba(227, 179, 65, 0.1); }
+.badge span { font-size: 28px; }
+.badge b { font-size: 13px; }
+.snote { margin: 4px 0 0; font-size: 13px; color: var(--hud-dim); }
+.pstats { font-size: 13px; line-height: 1.45; }
+.pstats p { margin: 0 0 4px; }
+.pstats .tricky { color: var(--bad); }
+.settings .wide { padding: 8px; border-radius: 6px; border: 1px solid var(--hud-line); background: transparent; cursor: pointer; font: 700 14px var(--font-display); letter-spacing: 0.05em; text-transform: uppercase; margin-top: 6px; }
+.settings .danger { border-color: var(--bad); color: var(--bad); }
+@media (max-width: 560px) {
+  .gembar { top: calc(var(--edge) + var(--map) + 44px + env(safe-area-inset-top, 0px)); }
+  .gembar button { min-width: 0; padding: 3px 6px 4px; }
+  .toast { top: 30%; }
+  .pw { right: calc(var(--edge) + 76px + env(safe-area-inset-right, 0px)); width: 54px; height: 54px; }
+}
+@media (max-height: 500px) {
+  .gembar button { min-width: 0; padding: 2px 6px 4px; }
+  .gembar .ic { font-size: 17px; }
+  .quiz { width: min(640px, calc(100% - 24px)); gap: 5px; padding: 8px 12px; }
+  .q-pic.big { font-size: 40px; }
+  .q-text { font-size: 26px; }
+  .q-pad.num { grid-template-columns: repeat(6, 1fr); }
+  .q-pad button { min-height: 42px; font-size: 22px; }
+  .pw { right: calc(var(--edge) + 72px + env(safe-area-inset-right, 0px)); width: 50px; height: 50px; }
+  #jumpBtn { bottom: calc(var(--edge) + 60px + env(safe-area-inset-bottom, 0px)); }
+}
 @media (prefers-reduced-motion: reduce) { .toast, .slider .knob, .caret { transition: none; } }
 </style>
 
@@ -345,6 +445,7 @@ body:not(.touch) .ride-btn::after { content: " · E"; opacity: 0.6; }
     <option value="on">On</option>
     <option value="off">Off</option>
   </select>
+  <button id="parentBtn" class="wide">Parent corner · learning &amp; progress</button>
   <button id="settingsDone" class="primary">Done</button>
 </div>
 
@@ -361,6 +462,7 @@ body:not(.touch) .ride-btn::after { content: " · E"; opacity: 0.6; }
   <b>Drive</b> <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> or arrows<br>
   <b>Handbrake</b> <kbd>Space</kbd> · <b>Reset</b> <kbd>R</kbd><br>
   <b>Camera</b> <kbd>C</kbd> · <b>Horn</b> <kbd>H</kbd> scares bears<br>
+  <b>Powers</b> <kbd>T</kbd> turbo · <kbd>J</kbd> jump<br>
   <b>Look around</b> drag the mouse<br>
   <b>Games &amp; vehicles</b> open the menu at the top right
 </div>
@@ -377,6 +479,58 @@ body:not(.touch) .ride-btn::after { content: " · E"; opacity: 0.6; }
 </div>
 <div class="walk-hint glass" id="walkHint" hidden>Walk to the red garage and pick a ride</div>
 <button class="ride-btn" id="rideBtn" hidden>Ride</button>
+
+<nav class="gembar" id="gemBar" aria-label="Points and gem houses"></nav>
+<button class="pw glass" id="turboBtn" aria-label="Turbo boost">TURBO</button>
+<button class="pw glass" id="jumpBtn" aria-label="Super jump">JUMP</button>
+
+<div class="quiz panel" id="quiz" role="dialog" aria-modal="true" aria-label="Gem house challenge" hidden>
+  <div class="q-head"><span class="q-kind" id="qKind"></span><span class="q-tools"><button id="qSpeak" aria-label="Read it out loud">🔊</button><button id="qClose" aria-label="Leave the house">✕</button></span></div>
+  <div class="q-step" id="qStep"></div>
+  <div class="q-timer" id="qTimer"><div id="qBar"></div></div>
+  <div class="q-pic" id="qPic"></div>
+  <div class="q-text" id="qText"></div>
+  <div class="q-answer" id="qAnswer"></div>
+  <div class="q-pad" id="qPad"></div>
+  <div class="q-msg" id="qMsg" aria-live="polite"></div>
+</div>
+
+<div class="shop panel" id="shop" role="dialog" aria-label="Shop" hidden>
+  <div class="q-head"><h2 id="shopTitle">Workbench</h2><span class="q-tools"><button id="shopClose" aria-label="Close">✕</button></span></div>
+  <div class="bal" id="shopBal"></div>
+  <div id="shopBody"></div>
+</div>
+
+<div class="settings panel" id="parent" role="dialog" aria-label="Parent corner" hidden>
+  <h2>Parent corner</h2>
+  <label class="label" for="p-level">Difficulty</label>
+  <select id="p-level">
+    <option value="easy">Easy · sums to 10, 3-letter words</option>
+    <option value="medium">Medium · sums to 20, 4-letter words</option>
+    <option value="hard">Hard · to 100, times tables, longer words</option>
+  </select>
+  <label class="label" for="p-topics">Challenges</label>
+  <select id="p-topics">
+    <option value="both">Math and spelling</option>
+    <option value="math">Math only</option>
+    <option value="spell">Spelling only</option>
+  </select>
+  <label class="label" for="p-timer">Timer for full points</label>
+  <select id="p-timer">
+    <option value="20">20 seconds</option>
+    <option value="30">30 seconds</option>
+    <option value="45">45 seconds</option>
+    <option value="0">No timer (always 5 points)</option>
+  </select>
+  <label class="label" for="p-voice">Read questions aloud</label>
+  <select id="p-voice"><option value="true">On</option><option value="false">Off</option></select>
+  <label class="label" for="p-freeVehicles">Vehicles</label>
+  <select id="p-freeVehicles"><option value="false">Earn them with coins</option><option value="true">All unlocked (free play)</option></select>
+  <span class="label">Progress</span>
+  <div class="pstats" id="p-stats"></div>
+  <button id="p-reset" class="wide danger">Erase all progress</button>
+  <button id="parentDone" class="primary">Done</button>
+</div>
 
 <div class="toast glass" id="toast" role="status" aria-live="polite"></div>
 <div class="count" id="count" hidden></div>
@@ -1010,7 +1164,7 @@ function buildVehicle(type) {
   let wheelSpin = null;
   const addWheel = (w, parent, x, y, z, front) => { w.pivot.position.set(x, y, z); parent.add(w.pivot); wheels.push({ ...w, x, z, restY: y, off: 0 }); if (front) steerers.push(w.pivot); };
   if (type === 'atv') {
-    const paint = std(0xb5301e, 0.42, 0.15);
+    const paint = std(0xb5301e, 0.42, 0.15); body.userData.paint = paint;
     box(body, 0.7, 0.12, 1.5, MAT.darkMetal, 0, 0.42, 0);
     box(body, 0.46, 0.36, 0.56, std(0x3b3e42, 0.55, 0.45), 0, 0.52, 0);
     box(body, 1.2, 0.09, 0.66, paint, 0, 0.8, 0.64);
@@ -1044,7 +1198,7 @@ function buildVehicle(type) {
   } else if (type === 'truck' || type === 'monster') {
     const big = type === 'monster', paint = big ? std(0x6a2fa0, 0.32, 0.35) : std(0x2c5a86, 0.38, 0.25);
     // The monster truck is the pickup lifted high on giant tires
-    const B = big ? new THREE.Group() : body;
+    const B = big ? new THREE.Group() : body; body.userData.paint = paint;
     if (big) { B.position.y = 0.95; B.scale.setScalar(1.05); body.add(B); }
     box(B, 1.2, 0.2, 4.0, MAT.darkMetal, 0, 0.95, 0);
     box(B, 2.0, 0.42, 4.5, paint, 0, 1.27, 0);
@@ -1119,7 +1273,7 @@ function buildVehicle(type) {
       for (const [x, z, front] of [[0.98, 1.5, 1], [-0.98, 1.5, 1], [0.98, -1.45, 0], [-0.98, -1.45, 0]]) addWheel(makeWheel(0.5, 0.42, std(0x8f9398, 0.35, 0.6)), root, x, 0.5, z, front);
     }
   } else if (type === 'buggy') {
-    const paint = std(0x3fa34d, 0.4, 0.2), cage = std(0x1d1f22, 0.4, 0.6), seat = std(0x151515, 0.9);
+    const paint = body.userData.paint = std(0x3fa34d, 0.4, 0.2), cage = std(0x1d1f22, 0.4, 0.6), seat = std(0x151515, 0.9);
     box(body, 1.15, 0.12, 2.5, MAT.darkMetal, 0, 0.55, 0);
     box(body, 1.3, 0.28, 0.95, paint, 0, 0.72, 1.05, 0.14);
     box(body, 1.4, 0.06, 0.6, paint, 0, 0.92, 1.35, 0.2);
@@ -1147,7 +1301,7 @@ function buildVehicle(type) {
     for (const [x, z, front, r, w] of [[0.8, 1.0, 1, 0.4, 0.3], [-0.8, 1.0, 1, 0.4, 0.3], [0.84, -0.95, 0, 0.5, 0.42], [-0.84, -0.95, 0, 0.5, 0.42]])
       addWheel(makeWheel(r, w, std(0xd0d3d6, 0.35, 0.6)), root, x, r, z, front);
   } else {
-    const orange = std(0xe8701c, 0.4, 0.1), white = std(0xeeeeea, 0.45), frame = std(0x8a8f96, 0.35, 0.6);
+    const orange = body.userData.paint = std(0xe8701c, 0.4, 0.1), white = std(0xeeeeea, 0.45), frame = std(0x8a8f96, 0.35, 0.6);
     limb(body, V(0, 1.02, 0.56), V(0, 0.55, 0.12), 0.07, 0.07, frame);
     limb(body, V(0, 1.02, 0.56), V(0, 0.96, -0.2), 0.07, 0.07, frame);
     limb(body, V(0, 0.96, -0.2), V(0, 0.52, -0.14), 0.07, 0.07, frame);
@@ -1219,11 +1373,15 @@ const keys = {};
 const touch = { steer: 0, throttle: 0, brake: 0 };
 const KEYMAP = { ArrowUp: 'up', KeyW: 'up', ArrowDown: 'down', KeyS: 'down', ArrowLeft: 'left', KeyA: 'left', ArrowRight: 'right', KeyD: 'right', Space: 'hand' };
 addEventListener('keydown', e => {
+  if (quiz.open) { quizKey(e); e.preventDefault(); return; }
+  if (!shopEl.hidden || !parentEl.hidden) { if (e.code === 'Escape') { shopEl.hidden = true; parentEl.hidden = true; } return; }
   if (KEYMAP[e.code]) { keys[KEYMAP[e.code]] = true; e.preventDefault(); }
   if (phase !== 'drive') { if (!e.repeat && !/^(INPUT|SELECT|BUTTON)$/.test(e.target.tagName || '')) homeKey(e); return; }
   if (e.code === 'KeyR' && !e.repeat) resetAction();
   if (e.code === 'KeyC' && !e.repeat) cycleCamera();
   if (e.code === 'KeyH' && !e.repeat) honk();
+  if (e.code === 'KeyT' && !e.repeat) useTurbo();
+  if (e.code === 'KeyJ' && !e.repeat) useJump();
   if (e.code === 'Escape') { setMenu(false); $('settings').hidden = true; }
 });
 addEventListener('keyup', e => { if (KEYMAP[e.code]) keys[KEYMAP[e.code]] = false; });
@@ -1313,11 +1471,11 @@ function physics(dt, inp) {
     let surf = car.onTrail ? 1 : 0.9;
     if (car.inMud) surf = 0.55;
     if (car.inWater) surf = Math.min(surf, lerp(1, s.water, Math.min(1, depth / 1.0)));
-    const top = s.maxSpeed * surf * (SPEED_LIMIT[settings.speed] || 1);
+    const top = s.maxSpeed * surf * (SPEED_LIMIT[settings.speed] || 1) * speedMul();
 
     if (inp.throttle > 0) {
       const target = top * inp.throttle;
-      if (vf < target) vf += s.accel * surf * (0.45 + 0.55 * inp.throttle) * Math.max(0.05, 1 - Math.pow(Math.max(0, vf) / target, 2)) * dt;
+      if (vf < target) vf += s.accel * accelMul() * surf * (0.45 + 0.55 * inp.throttle) * Math.max(0.05, 1 - Math.pow(Math.max(0, vf) / target, 2)) * dt;
       else vf -= Math.min(vf - target, 3 * dt);
     }
     if (inp.brake > 0) {
@@ -1330,7 +1488,7 @@ function physics(dt, inp) {
     if (car.inMud) vf -= vf * 0.6 * dt;
     vf -= vf * Math.abs(vf) * 0.0012 * dt;
 
-    let grip = s.grip * (car.inMud ? 0.45 : car.onTrail ? 1 : 0.85) * (settings.assist === 'on' ? 1.8 : 1);
+    let grip = s.grip * gripMul() * (car.inMud ? 0.45 : car.onTrail ? 1 : 0.85) * (settings.assist === 'on' ? 1.8 : 1);
     if (inp.hand) { grip *= 0.25; vf -= Math.sign(vf) * Math.min(Math.abs(vf), 14 * dt); }
     vl *= Math.exp(-grip * dt);
 
@@ -1471,7 +1629,9 @@ function finishLap(t) {
   const medal = MEDALS.find(m => t <= mt[m]);
   race.lastLap = t;
   const medalTxt = medal ? `<span class="good">${medal[0].toUpperCase() + medal.slice(1)} medal</span>` : `<span class="bad">No medal</span>`;
-  toast(`Lap ${fmt(t)} · ${medalTxt}${isBest ? ' · New best' : ''}`, 3.2);
+  const lapCoins = 2 + (medal === 'gold' ? 3 : medal === 'silver' ? 2 : medal === 'bronze' ? 1 : 0);
+  prog.coins += lapCoins; saveProg(); updateGemBar(true);
+  toast(`Lap ${fmt(t)} · ${medalTxt}${isBest ? ' · New best' : ''} · +${lapCoins} 🪙`, 3.2);
   updateGoals();
 }
 function raceUpdate(px, pz, dt) {
@@ -1759,7 +1919,7 @@ function poseVehicle(dt) {
 const camTarget = new THREE.Vector3(), desired = new THREE.Vector3();
 const wrapAngle = a => Math.atan2(Math.sin(a), Math.cos(a));
 // Rider's-eye position (x, y, z in the vehicle body) and how far it looks down
-const RIDE = { atv: { eye: [0, 1.62, -0.3], down: 0.3 }, truck: { eye: [0.42, 2.06, -0.24], down: 0.1 }, bike: { eye: [0, 1.74, -0.18], down: 0.32 }, buggy: { eye: [0, 1.66, -0.32], down: 0.14 }, monster: { eye: [0.44, 3.12, -0.27], down: 0.14 } };
+const RIDE = { atv: { eye: [0, 1.62, -0.3], down: 0.3 }, truck: { eye: [0.42, 2.06, -0.24], down: 0.1 }, bike: { eye: [0, 1.74, -0.18], down: 0.32 }, buggy: { eye: [0, 1.48, -0.34], down: 0.1 }, monster: { eye: [0.44, 3.12, -0.27], down: 0.14 } };
 const _v1 = new THREE.Vector3(), _v2 = new THREE.Vector3(), _q = new THREE.Quaternion();
 let lookTurn = 0;
 function setLens(fov, near) {
@@ -2092,7 +2252,7 @@ function modeUpdate(dt) {
   if (game.mode === 'explore') {
     for (const pl of PLACES) {
       if (pl.found || Math.hypot(pl.x - car.x, pl.z - car.z) > 18) continue;
-      pl.found = true; pl.flag.material = flagMatDone;
+      pl.found = true; pl.flag.material = flagMatDone; prog.coins += 1; saveProg();
       const n = PLACES.filter(q => q.found).length;
       if (n === PLACES.length) finishRound('You found every place'); else { toast(`Found ${pl.name} · ${n}/${PLACES.length}`); sfx('gate'); }
     }
@@ -2106,14 +2266,14 @@ function modeUpdate(dt) {
       toast(`Picked up a hiker · ${game.carried}/${cap} seats used`); sfx('gate');
     }
     if (game.carried > 0 && Math.hypot(car.x, car.z) < 9 && speed < 9) {
-      game.delivered += game.carried; game.carried = 0;
+      game.delivered += game.carried; prog.coins += 2 * game.carried; saveProg(); game.carried = 0;
       if (game.delivered >= hikers.length) finishRound('All hikers rescued');
       else { toast(`Hikers safe at base · ${game.delivered}/${hikers.length}`); sfx('gate'); }
     }
   } else if (game.mode === 'treasure' && game.end == null) {
     for (const c of chests) {
       if (c.found || Math.hypot(c.x - car.x, c.z - car.z) > 3.8) continue;
-      c.found = true; c.g.visible = false;
+      c.found = true; c.g.visible = false; prog.coins += 2; saveProg();
       for (let k = 0; k < 16; k++) { const a = k / 16 * Math.PI * 2; emit(c.x, groundHeight(c.x, c.z) + 0.6, c.z, '#ffd75e', 0.9, 0.9, 1.1, Math.cos(a) * 2.5, 3 + Math.random() * 2, Math.sin(a) * 2.5, true); }
       const n = chests.filter(q => q.found).length;
       sfx('coin');
@@ -2129,6 +2289,7 @@ function modeUpdate(dt) {
 }
 function arrowTarget() {
   if (car.crashT > 0) return null;
+  if (gemTarget) { const [h] = nearestHouse(gemTarget); if (h) return doorSpot(h); }
   if (game.mode === 'racing') { if (race.state !== 'racing') return null; const g = gates[race.next]; return [g.x, g.z]; }
   if (game.mode === 'rescue' && game.end == null) {
     const [h] = nearest(hikers, q => q.picked);
@@ -2171,6 +2332,7 @@ function drawModeMap() {
   if (game.mode === 'explore') for (const pl of PLACES) ring(pl.x, pl.z, 8, pl.found ? '#67c27a' : null, pl.found ? '#1d3a22' : '#7fb4ee');
   if (game.mode === 'rescue') { ring(0, 0, 10, '#67c27a', '#1d3a22'); for (const h of hikers) if (!h.picked) ring(h.x, h.z, 7, '#ff6a3d', '#3a160a'); }
   if (game.mode === 'treasure') for (const c of chests) if (c.found) ring(c.x, c.z, 6, '#ffd75e', '#3a2a08');
+  for (const h of houses) if (h.ready) ring(h.x, h.z, gemTarget === h.kind ? 9 : 6, KINDS[h.kind].css, '#111');
   for (const an of animals) if (an.kind === 'bear' && an.g.visible) ring(an.x, an.z, 5, an.state === 'charge' ? '#ff5a3d' : '#7a4a2a', '#1a0f08');
 }
 
@@ -2191,14 +2353,41 @@ function pollGamepad() {
   pad.brake = Math.max(btn(6).value, btn(1).pressed ? 1 : 0, btn(13).pressed ? 1 : 0);
   pad.hand = btn(5).pressed;
   const edge = i => btn(i).pressed && !pad.prev[i];
+  const dlg = !quizEl.hidden ? quizEl : !shopEl.hidden ? shopEl : !parentEl.hidden ? parentEl : null;
+  if (dlg) { padDialog(dlg, edge); pad.prev = gp.buttons.map(b => b.pressed); pad.steer = pad.throttle = pad.brake = 0; return; }
   if (phase !== 'drive') { homePad(edge); pad.prev = gp.buttons.map(b => b.pressed); return; }
   if (edge(3)) cycleCamera();
   if (edge(2)) honk();
   if (edge(4) || edge(8)) resetAction();
   if (edge(9)) setMenu(menuBody.hidden);
+  if (edge(11)) useTurbo();
+  if (edge(10)) useJump();
   pad.prev = gp.buttons.map(b => b.pressed);
 }
 addEventListener('gamepadconnected', () => { pad.seen = false; });
+// In a dialog the D-pad moves between buttons (nearest one in that direction), A presses, B closes
+function padDialog(dlg, edge) {
+  const items = [...dlg.querySelectorAll('button:not(:disabled), select')].filter(b => b.offsetParent);
+  if (!items.length) return;
+  let cur = items.includes(document.activeElement) ? document.activeElement : null;
+  const dirs = { 12: [0, -1], 13: [0, 1], 14: [-1, 0], 15: [1, 0] };
+  for (const [i, [dx, dy]] of Object.entries(dirs)) {
+    if (!edge(+i)) continue;
+    if (!cur) { (items.find(b => !b.closest('.q-tools')) || items[0]).focus(); return; }
+    const r = cur.getBoundingClientRect(), cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+    let best = null, bd = Infinity;
+    for (const b of items) {
+      if (b === cur) continue;
+      const q = b.getBoundingClientRect(), vx = q.left + q.width / 2 - cx, vy = q.top + q.height / 2 - cy, along = vx * dx + vy * dy;
+      if (along <= 4) continue;
+      const d = along + Math.abs(vx * dy + vy * dx) * 2.5;
+      if (d < bd) { bd = d; best = b; }
+    }
+    if (best) best.focus();
+  }
+  if (edge(0)) { if (cur) cur.click(); else (items.find(b => !b.closest('.q-tools')) || items[0]).focus(); }
+  if (edge(1)) { if (dlg === quizEl) leaveHouse(); else dlg.hidden = true; }
+}
 
 // ---------- Animals ----------
 const animals = [];
@@ -2291,7 +2480,7 @@ function updateAnimals(dt) {
       } else if (an.state === 'cool') {
         an.target = toCar + Math.PI; an.speed = A.walk * 2;
         if (an.t <= 0) an.state = 'wander';
-      } else if (dist < 42 && car.crashT <= 0) {
+      } else if (dist < 42 && car.crashT <= 0 && !prog.powers.shield) {
         an.state = 'charge';
         sfx('growl', 0.8);
         if (simTime - bearToast > 6) { bearToast = simTime; toast('<span class="bad">Bear!</span> · drive away fast'); }
@@ -2323,6 +2512,531 @@ function updateAnimals(dt) {
     an.legs.forEach((l, i) => { l.rotation.x = (i % 2 === (i < 2 ? 0 : 1) ? 1 : -1) * swing; });
   }
 }
+
+// ---------- Learning: gem houses, points, fuel, shop, badges ----------
+// Houses hide around the valley. Answer a math or spelling question to open the door, help with a small job inside,
+// and collect 5 points of that house's kind (4 if the timer ran out). Coins buy vehicles, gems buy upgrades,
+// fuel fills the tank, stars unlock superpowers.
+const KINDS = {
+  fuel: { icon: '⛽', name: 'Fuel', house: 'Fuel house', color: 0xe0533d, css: '#e0533d', thing: ['🛢️', 'fuel cans'] },
+  coin: { icon: '🪙', name: 'Coins', house: 'Coin house', color: 0xe3b341, css: '#e3b341', thing: ['🪙', 'coins'] },
+  gem: { icon: '💎', name: 'Gems', house: 'Gem house', color: 0x4fc3e8, css: '#4fc3e8', thing: ['💎', 'gems'] },
+  star: { icon: '⭐', name: 'Stars', house: 'Star house', color: 0xf7d84a, css: '#f7d84a', thing: ['⭐', 'stars'] }
+};
+const KIND_KEYS = Object.keys(KINDS);
+const PRICES = { bike: 0, atv: 10, truck: 25, buggy: 50, monster: 100, plane: 200, heli: 350, jet: 600 };
+const VNAMES = { bike: 'Dirt Bike', atv: 'Quad', truck: 'Truck', buggy: 'Dune Buggy', monster: 'Monster Truck', plane: 'Airplane', heli: 'Helicopter', jet: 'Fighter Jet' };
+const AIRCRAFT = ['plane', 'heli', 'jet'];
+const BLANK_STATS = () => ({ right: 0, late: 0, wrong: 0, items: {} });
+const prog = Object.assign({
+  coins: 0, gems: 0, stars: 0, fuel: 20, owned: ['bike'], up: { engine: 0, tires: 0, tank: 0 }, paint: {}, powers: {}, badges: [],
+  houses: 0, fuelHouses: 0, streak: 0, bestStreak: 0, chest: '', math: BLANK_STATS(), spell: BLANK_STATS()
+}, store.get('bcr-prog-v1', {}));
+const learn = Object.assign({ level: 'easy', topics: 'both', timer: 30, voice: true, freeVehicles: false }, store.get('bcr-learn-v1', {}));
+const saveProg = () => store.set('bcr-prog-v1', prog);
+const tankSize = () => 20 + prog.up.tank * 10;
+const owns = t => learn.freeVehicles || PRICES[t] === 0 || prog.owned.includes(t);
+const today = () => new Date().toDateString();
+const ri = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
+const pick = arr => arr[Math.floor(Math.random() * arr.length)];
+const shuffle = arr => { for (let i = arr.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [arr[i], arr[j]] = [arr[j], arr[i]]; } return arr; };
+
+// Read questions out loud where the browser can
+function speak(text) {
+  if (!learn.voice || !window.speechSynthesis) return;
+  try {
+    speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text); u.rate = 0.9; u.pitch = 1.05; speechSynthesis.speak(u);
+  } catch (e) { /* speech is optional */ }
+}
+
+// ---- Gem houses in the valley ----
+const gemGroup = new THREE.Group(); scene.add(gemGroup);
+const houses = [];
+const houseWall = std(0xe8dcc4, 0.85), houseTrim = std(0x5a3a22, 0.7), doneRoof = std(0x6b6b6b, 0.8);
+function gemIcon(kind) {
+  const g = new THREE.Group(), c = KINDS[kind].color;
+  const glow = std(c, 0.25, 0.3, { emissive: c, emissiveIntensity: 0.45 });
+  if (kind === 'fuel') {
+    box(g, 0.9, 1.1, 0.42, glow, 0, 0, 0);
+    box(g, 0.5, 0.12, 0.1, MAT.black, 0, 0.62, 0);
+    cyl(g, 0.07, 0.07, 0.4, 8, MAT.black, 0.3, 0.7, 0, 0, 0, -0.6);
+  } else if (kind === 'coin') {
+    cyl(g, 0.6, 0.6, 0.14, 24, glow, 0, 0, 0, Math.PI / 2);
+    cyl(g, 0.42, 0.42, 0.16, 24, std(0xc9952a, 0.3, 0.6), 0, 0, 0, Math.PI / 2);
+  } else if (kind === 'gem') {
+    const m = new THREE.Mesh(new THREE.OctahedronGeometry(0.65, 0), glow); m.scale.set(1, 1.3, 1); g.add(m);
+  } else {
+    const sh = new THREE.Shape();
+    for (let k = 0; k < 10; k++) { const a = k / 10 * Math.PI * 2 + Math.PI / 2, r = k % 2 ? 0.3 : 0.72; k ? sh.lineTo(Math.cos(a) * r, Math.sin(a) * r) : sh.moveTo(Math.cos(a) * r, Math.sin(a) * r); }
+    const m = new THREE.Mesh(new THREE.ExtrudeGeometry(sh, { depth: 0.2, bevelEnabled: false }), glow); m.position.z = -0.1; g.add(m);
+  }
+  return g;
+}
+function makeGemHouse(kind) {
+  const g = new THREE.Group(), k = KINDS[kind];
+  const roofMat = std(k.color, 0.6, 0.1);
+  box(g, 4, 2.4, 4, houseWall, 0, 1.2, 0);
+  const roof = new THREE.Mesh(new THREE.ConeGeometry(3.4, 1.8, 4), roofMat); roof.position.y = 3.3; roof.rotation.y = Math.PI / 4; g.add(roof);
+  box(g, 1.1, 1.8, 0.1, houseTrim, 0, 0.9, 2.02);
+  box(g, 0.08, 0.08, 0.06, std(0xc9a640, 0.3, 0.8), 0.35, 0.9, 2.1);
+  for (const sd of [-1, 1]) box(g, 0.7, 0.6, 0.06, std(0xfff2cc, 0.4, 0, { emissive: 0xffd88a, emissiveIntensity: 0.5 }), sd * 1.3, 1.5, 2.02);
+  const sign = new THREE.Mesh(new THREE.CircleGeometry(0.45, 24), new THREE.MeshBasicMaterial({ map: badgeTex(k.icon, k.css) }));
+  sign.position.set(0, 2.15, 2.06); g.add(sign);
+  const icon = gemIcon(kind); icon.position.y = 6; g.add(icon);
+  const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 40, 8, 1, true), new THREE.MeshBasicMaterial({ color: k.color, transparent: true, opacity: 0.3, depthWrite: false, fog: false }));
+  beam.position.y = 24; g.add(beam);
+  shade(g); beam.castShadow = false;
+  gemGroup.add(g);
+  const col = { x: 0, z: 0, hw: 2.1, hd: 2.1 }; boxes.push(col);
+  const h = { kind, g, icon, beam, roof, roofMat, col, x: 0, z: 0, dir: 0, ready: true, t: 0 };
+  placeHouse(h);
+  houses.push(h);
+  return h;
+}
+function badgeTex(icon, color) {
+  const c = document.createElement('canvas'); c.width = c.height = 128; const g = c.getContext('2d');
+  g.fillStyle = '#1d211e'; g.beginPath(); g.arc(64, 64, 62, 0, Math.PI * 2); g.fill();
+  g.lineWidth = 8; g.strokeStyle = color; g.stroke();
+  g.font = '64px "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(icon, 64, 70);
+  return new THREE.CanvasTexture(c);
+}
+function placeHouse(h) {
+  let x, z;
+  for (let tries = 0; tries < 30; tries++) {
+    [x, z] = randomSpot(70, HALF - 50, 12);
+    if (houses.every(o => o === h || Math.hypot(o.x - x, o.z - z) > 70)) break;
+  }
+  h.x = x; h.z = z; h.dir = Math.floor(Math.random() * 4) * Math.PI / 2;
+  const gh = Math.min(groundHeight(x - 2, z - 2), groundHeight(x + 2, z - 2), groundHeight(x - 2, z + 2), groundHeight(x + 2, z + 2), groundHeight(x, z));
+  h.g.position.set(x, gh - 0.1, z); h.g.rotation.y = h.dir;
+  h.col.x = x; h.col.z = z;
+  h.ready = true; h.icon.visible = true; h.beam.visible = true; h.roof.material = h.roofMat;
+}
+// Where you stop to knock: just outside the door
+const doorSpot = h => [h.x + Math.sin(h.dir) * 4.2, h.z + Math.cos(h.dir) * 4.2];
+for (const kind of ['fuel', 'fuel', 'fuel', 'coin', 'coin', 'coin', 'gem', 'gem', 'gem', 'star', 'star', 'star']) makeGemHouse(kind);
+function nearestHouse(kind) {
+  let best = null, bd = Infinity;
+  for (const h of houses) {
+    if (!h.ready || (kind && h.kind !== kind)) continue;
+    const d = Math.hypot(h.x - car.x, h.z - car.z);
+    if (d < bd) { bd = d; best = h; }
+  }
+  return best ? [best, bd] : [null, Infinity];
+}
+let gemTarget = null, knockToast = 0;
+
+// ---- Questions ----
+const WORDS = {
+  easy: [['CAT', '🐱'], ['DOG', '🐶'], ['SUN', '☀️'], ['BUS', '🚌'], ['HAT', '🎩'], ['FOX', '🦊'], ['PIG', '🐷'], ['COW', '🐮'], ['BEE', '🐝'], ['EGG', '🥚'], ['CUP', '🥤'], ['CAR', '🚗'], ['BOX', '📦'], ['BAT', '🦇'], ['ANT', '🐜'], ['BED', '🛏️'], ['KEY', '🔑'], ['MAP', '🗺️']],
+  medium: [['BEAR', '🐻'], ['TREE', '🌳'], ['FISH', '🐟'], ['STAR', '⭐'], ['FROG', '🐸'], ['BIKE', '🚲'], ['BOAT', '⛵'], ['CAKE', '🎂'], ['MOON', '🌙'], ['DUCK', '🦆'], ['GOAT', '🐐'], ['DEER', '🦌'], ['WOLF', '🐺'], ['TENT', '⛺'], ['LEAF', '🍃'], ['MILK', '🥛'], ['SNOW', '❄️'], ['RAIN', '🌧️'], ['BELL', '🔔'], ['DRUM', '🥁']],
+  hard: [['HORSE', '🐴'], ['TRUCK', '🚚'], ['TRAIN', '🚆'], ['HOUSE', '🏠'], ['CLOUD', '☁️'], ['APPLE', '🍎'], ['SNAKE', '🐍'], ['TIGER', '🐯'], ['ROBOT', '🤖'], ['ROCKET', '🚀'], ['RABBIT', '🐇'], ['CASTLE', '🏰'], ['FOREST', '🌲'], ['PLANET', '🪐'], ['TURTLE', '🐢'], ['MONKEY', '🐵'], ['PENGUIN', '🐧'], ['BRIDGE', '🌉']]
+};
+const PIC = ['🐻', '🦌', '🐰', '🍎', '🌲', '🐟', '🦆', '🍄'];
+// Favor items the player has missed before, so practice goes where it's needed
+function weightedPick(list, stats, key) {
+  const w = list.map(it => 1 + 2 * ((stats.items[key(it)] || {}).w || 0));
+  let r = Math.random() * w.reduce((a, b) => a + b, 0);
+  for (let i = 0; i < list.length; i++) if ((r -= w[i]) <= 0) return list[i];
+  return list[0];
+}
+function makeMath() {
+  const L = learn.level;
+  let a, b, op = Math.random() < 0.6 ? '+' : '-';
+  if (L === 'easy') { if (op === '+') { a = ri(1, 9); b = ri(1, 10 - a); } else { a = ri(2, 10); b = ri(1, a - 1); } }
+  else if (L === 'medium') { if (op === '+') { a = ri(2, 15); b = ri(2, Math.max(2, 20 - a)); } else { a = ri(6, 20); b = ri(1, a - 1); } }
+  else {
+    const r = Math.random();
+    if (r < 0.25) { op = '×'; a = pick([2, 5, 10, 3, 4]); b = ri(1, 10); }
+    else if (op === '+') { a = ri(10, 70); b = ri(5, 99 - a); }
+    else { a = ri(20, 99); b = ri(5, a - 5); }
+  }
+  // Retry once toward a missed fact if there is one
+  const missed = Object.entries(prog.math.items).filter(([k, v]) => v.w > v.r && /^\d+[+\-×]\d+$/.test(k));
+  if (missed.length && Math.random() < 0.35) { const m = pick(missed)[0].match(/^(\d+)([+\-×])(\d+)$/); a = +m[1]; op = m[2]; b = +m[3]; }
+  const ans = op === '+' ? a + b : op === '-' ? a - b : a * b;
+  const words = { '+': 'plus', '-': 'take away', '×': 'times' };
+  const q = { type: 'math', key: `${a}${op}${b}`, a, b, op, ans: String(ans), text: `${a} ${op === '-' ? '−' : op} ${b} = ?`, say: `What is ${a} ${words[op]} ${b}?` };
+  if (op !== '×' && a <= 10 && b <= 10) { const e = pick(PIC); q.pic = op === '+' ? `${e.repeat(a)} + ${e.repeat(b)}` : `${e.repeat(a)} take away ${b}`; }
+  q.hint = op === '+' ? `Start at ${Math.max(a, b)} and count up ${Math.min(a, b)} more.` : op === '-' ? `Start at ${a} and count back ${b}.` : `${a} groups of ${b}: count by ${b}s.`;
+  return q;
+}
+function makeSpell() {
+  const list = WORDS[learn.level];
+  const [word, emoji] = weightedPick(list, prog.spell, it => it[0]);
+  let tiles;
+  do tiles = shuffle(word.split('')); while (tiles.join('') === word && new Set(word).size > 1);
+  return { type: 'spell', key: word, word, emoji, tiles, text: 'Spell the word', say: `Spell ${word.toLowerCase()}.`, hint: `It starts with ${word[0]}.` };
+}
+function makeQuestion() {
+  const t = learn.topics === 'math' ? 'math' : learn.topics === 'spell' ? 'spell' : (Math.random() < 0.55 ? 'math' : 'spell');
+  return t === 'math' ? makeMath() : makeSpell();
+}
+function makeJob(kind) {
+  const [emoji, word] = KINDS[kind].thing, maxN = learn.level === 'easy' ? 10 : learn.level === 'medium' ? 15 : 20, r = Math.random();
+  if (r < 0.5) {
+    const n = ri(3, maxN);
+    return { text: `Help count the ${word}! How many are there?`, say: `Help count the ${word}. How many are there?`, pic: emoji.repeat(n), ans: n, choices: shuffle([n, n + pick([1, 2]), Math.max(1, n - pick([1, 2]))].filter((v, i, a) => a.indexOf(v) === i)) };
+  }
+  if (r < 0.75) {
+    const a = ri(10, maxN * 3), b = Math.max(0, a + pick([-1, 1]) * ri(1, 9)) || a + 3;
+    const big = Math.max(a, b);
+    return { text: 'Which number is bigger?', say: 'Which number is bigger?', pic: '', ans: big, choices: shuffle([a, b]) };
+  }
+  const step = pick(learn.level === 'easy' ? [1, 2] : [2, 5, 10, 3]), start = ri(1, 10) * (step === 10 ? 1 : 1);
+  const seq = [0, 1, 2].map(k => start + k * step), n = start + 3 * step;
+  return { text: `What comes next? ${seq.join(', ')}, ?`, say: `What comes next? ${seq.join(', ')}`, pic: '', ans: n, choices: shuffle([n, n + step, n - 1]) };
+}
+
+// ---- The challenge window ----
+const quizEl = $('quiz');
+const quiz = { open: false, house: null, step: 'door', q: null, input: '', filled: 0, wrong: 0, t0: 0, late: false, job: null, pts: 0 };
+function openQuiz(h) {
+  Object.assign(quiz, { open: true, house: h, step: 'door', q: makeQuestion(), input: '', filled: 0, wrong: 0, used: [], t0: performance.now() / 1000, late: false });
+  Object.assign(car, { vx: 0, vz: 0 });
+  quizEl.hidden = false;
+  renderQuiz();
+  speak(quiz.q.say);
+}
+function closeQuiz() {
+  quiz.open = false; quizEl.hidden = true;
+  try { if (window.speechSynthesis) speechSynthesis.cancel(); } catch (e) { /* optional */ }
+}
+function renderQuiz() {
+  const h = quiz.house, k = KINDS[h.kind], q = quiz.q;
+  $('qKind').textContent = `${k.icon} ${k.house}`;
+  $('qKind').style.color = k.css;
+  const pad = $('qPad'), ans = $('qAnswer'), msg = $('qMsg'), focusAt = [...pad.children].indexOf(document.activeElement);
+  msg.textContent = ''; msg.className = 'q-msg';
+  $('qTimer').hidden = quiz.step !== 'door' || !learn.timer;
+  if (quiz.step === 'door') {
+    $('qStep').textContent = 'Unlock the door';
+    $('qPic').textContent = q.type === 'spell' ? q.emoji : (q.pic || '');
+    $('qPic').classList.toggle('big', q.type === 'spell');
+    $('qText').textContent = q.text;
+    if (q.type === 'math') {
+      ans.innerHTML = `<span class="num">${quiz.input || '&nbsp;'}</span>`;
+      pad.className = 'q-pad num';
+      pad.innerHTML = [1, 2, 3, 4, 5, 6, 7, 8, 9].map(d => `<button data-d="${d}">${d}</button>`).join('') + '<button data-d="back" aria-label="Delete">⌫</button><button data-d="0">0</button><button data-d="ok" class="ok">Check</button>';
+    } else {
+      ans.innerHTML = q.word.split('').map((c, i) => `<span class="slot${i < quiz.filled ? ' on' : ''}">${i < quiz.filled ? c : ''}</span>`).join('');
+      pad.className = 'q-pad tiles';
+      pad.innerHTML = q.tiles.map((c, i) => `<button data-t="${i}"${quiz.used && quiz.used[i] ? ' disabled' : ''}>${c}</button>`).join('');
+    }
+  } else if (quiz.step === 'job') {
+    const j = quiz.job;
+    $('qStep').textContent = 'You\'re in! Now help inside';
+    $('qPic').textContent = j.pic; $('qPic').classList.remove('big');
+    $('qText').textContent = j.text;
+    ans.innerHTML = '';
+    pad.className = 'q-pad choices';
+    pad.innerHTML = j.choices.map(v => `<button data-c="${v}">${v}</button>`).join('');
+  } else {
+    $('qStep').textContent = 'Great job!';
+    $('qPic').textContent = k.icon; $('qPic').classList.add('big');
+    $('qText').textContent = `+${quiz.pts} ${k.name}${quiz.late ? ' (timer ran out, so 4 instead of 5)' : ''}`;
+    ans.innerHTML = '';
+    pad.className = 'q-pad choices';
+    pad.innerHTML = '<button data-collect="1" class="ok">Collect</button>';
+  }
+  if (focusAt >= 0 && pad.children.length) pad.children[Math.min(focusAt, pad.children.length - 1)].focus();
+}
+function quizFeedback(text, good) {
+  const msg = $('qMsg'); msg.textContent = text; msg.className = 'q-msg ' + (good ? 'good' : 'bad');
+  if (!good) { quizEl.classList.remove('shake'); void quizEl.offsetWidth; quizEl.classList.add('shake'); }
+}
+function recordAnswer(q, ok) {
+  const st = q.type === 'math' ? prog.math : prog.spell, it = st.items[q.key] || (st.items[q.key] = { r: 0, w: 0, late: 0 });
+  if (ok) { it.r++; if (quiz.late) { st.late++; it.late++; } else st.right++; } else { it.w++; st.wrong++; }
+}
+function doorSolved() {
+  const q = quiz.q, secs = performance.now() / 1000 - quiz.t0;
+  recordAnswer(q, true);
+  quiz.pts = quiz.late ? 4 : 5;
+  if (!quiz.late && quiz.wrong === 0) { prog.streak++; prog.bestStreak = Math.max(prog.bestStreak, prog.streak); } else prog.streak = 0;
+  if (secs < 5 && quiz.wrong === 0) earnBadge('speedy');
+  sfx('gate');
+  quiz.step = 'job'; quiz.job = makeJob(quiz.house.kind);
+  quizFeedback('The door is open!', true);
+  setTimeout(() => { if (quiz.open && quiz.step === 'job') { renderQuiz(); speak(quiz.job.say); } }, 700);
+}
+function quizPress(btn) {
+  if (!quiz.open || !btn) return;
+  const q = quiz.q;
+  if (btn.dataset.collect) { collectReward(); return; }
+  if (quiz.step === 'job' && btn.dataset.c != null) {
+    if (+btn.dataset.c === quiz.job.ans) { sfx('coin'); quiz.step = 'reward'; renderQuiz(); speak(`Great job! You earned ${quiz.pts} ${KINDS[quiz.house.kind].name.toLowerCase()}.`); }
+    else { quizFeedback('Count again, you can do it!', false); btn.disabled = true; }
+    return;
+  }
+  if (quiz.step !== 'door') return;
+  if (q.type === 'math') {
+    const d = btn.dataset.d;
+    if (d === 'back') quiz.input = quiz.input.slice(0, -1);
+    else if (d === 'ok') {
+      if (!quiz.input) return;
+      if (quiz.input === q.ans) { doorSolved(); return; }
+      quiz.wrong++; recordAnswer(q, false);
+      quizFeedback(quiz.wrong >= 2 ? `Not quite. Hint: ${q.hint}` : 'Not quite, try again!', false);
+      if (quiz.wrong >= 2) speak(q.hint);
+      quiz.input = '';
+    } else if (d != null && quiz.input.length < 3) quiz.input += d;
+    $('qAnswer').innerHTML = `<span class="num">${quiz.input || '&nbsp;'}</span>`;
+    return;
+  }
+  const i = btn.dataset.t;
+  if (i == null) return;
+  if (q.tiles[i] === q.word[quiz.filled]) {
+    quiz.used = quiz.used || []; quiz.used[i] = true; quiz.filled++;
+    sfx('beep', 0);
+    if (quiz.filled === q.word.length) { renderQuiz(); doorSolved(); return; }
+    renderQuiz();
+  } else {
+    quiz.wrong++;
+    if (quiz.wrong === 1 || quiz.wrong === 3) recordAnswer(q, false);
+    quizFeedback(quiz.wrong >= 2 ? `Hint: the next letter is ${q.word[quiz.filled]}` : 'Oops, try another letter!', false);
+    if (quiz.wrong >= 2) { const b = [...$('qPad').querySelectorAll('button')].find(x => !x.disabled && q.tiles[x.dataset.t] === q.word[quiz.filled]); if (b) b.classList.add('glow'); }
+  }
+}
+function collectReward() {
+  const h = quiz.house, kind = h.kind, pts = quiz.pts;
+  if (kind === 'fuel') { const before = prog.fuel; prog.fuel = Math.min(tankSize(), prog.fuel + pts); prog.fuelHouses++; if (prog.fuel - before < pts) toast('Tank full!'); }
+  else if (kind === 'coin') prog.coins += pts;
+  else if (kind === 'gem') prog.gems += pts;
+  else prog.stars += pts;
+  prog.houses++;
+  h.ready = false; h.t = 45; h.icon.visible = false; h.beam.visible = false; h.roof.material = doneRoof;
+  for (let k = 0; k < 18; k++) { const a = k / 18 * Math.PI * 2; emit(h.x, groundHeight(h.x, h.z) + 5, h.z, KINDS[kind].css, 1, 0.9, 1.2, Math.cos(a) * 3, 3 + Math.random() * 3, Math.sin(a) * 3, true); }
+  if (gemTarget === kind) gemTarget = null;
+  checkBadges();
+  saveProg(); updateGemBar(true);
+  closeQuiz();
+  sfx('coin');
+  toast(`+${pts} ${KINDS[kind].icon} ${KINDS[kind].name}`, 2.2);
+}
+quizEl.addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; if (b.id === 'qSpeak') { speak(quiz.step === 'job' ? quiz.job.say : quiz.q.say); return; } if (b.id === 'qClose') { leaveHouse(); return; } quizPress(b); });
+// Leaving without answering: the house waits until you drive away and come back
+function leaveHouse() { if (quiz.house) quiz.house.wait = true; closeQuiz(); toast('The house will wait for you'); }
+function quizKey(e) {
+  if (e.code === 'Escape') { leaveHouse(); return; }
+  const pad = $('qPad');
+  if (quiz.step === 'door' && quiz.q.type === 'math') {
+    const d = /^Digit(\d)$|^Numpad(\d)$/.exec(e.code);
+    if (d) quizPress(pad.querySelector(`[data-d="${d[1] || d[2]}"]`));
+    if (e.code === 'Backspace') quizPress(pad.querySelector('[data-d="back"]'));
+    if (e.code === 'Enter' || e.code === 'NumpadEnter') quizPress(pad.querySelector('[data-d="ok"]'));
+  } else if (quiz.step === 'door' && /^Key[A-Z]$/.test(e.code)) {
+    const c = e.code.slice(3), b = [...pad.querySelectorAll('button')].find(x => !x.disabled && x.textContent === c && c === quiz.q.word[quiz.filled]) || [...pad.querySelectorAll('button')].find(x => !x.disabled && x.textContent === c);
+    if (b) quizPress(b);
+  } else if (quiz.step === 'job' && /^Digit\d$/.test(e.code)) {
+    const v = e.code.slice(5), b = [...pad.querySelectorAll('button')].find(x => x.dataset.c === v); if (b) quizPress(b);
+  } else if (quiz.step === 'reward' && (e.code === 'Enter' || e.code === 'Space')) collectReward();
+}
+function updateQuiz() {
+  if (quiz.step !== 'door' || !learn.timer) return;
+  const left = learn.timer - (performance.now() / 1000 - quiz.t0), bar = $('qBar');
+  bar.style.width = Math.max(0, left / learn.timer * 100) + '%';
+  bar.classList.toggle('low', left < learn.timer * 0.25);
+  if (left <= 0 && !quiz.late) { quiz.late = true; quizFeedback('Time\'s up, but keep going! It\'s still worth 4 points.', false); }
+}
+
+// ---- Fuel, upgrades and superpowers while driving ----
+const POWERS = {
+  turbo: { name: 'Turbo boost', icon: '🚀', price: 10, desc: 'Press TURBO (T) for a burst of speed' },
+  jump: { name: 'Super jump', icon: '🦘', price: 15, desc: 'Press JUMP (J) to leap into the air' },
+  shield: { name: 'Bear buddy', icon: '🐻', price: 8, desc: 'Bears stay calm and never chase you' },
+  saver: { name: 'Fuel saver', icon: '🍃', price: 12, desc: 'Your tank lasts twice as long' }
+};
+const UPGRADES = {
+  engine: { name: 'Faster engine', icon: '⚙️', prices: [8, 15, 25], desc: 'More top speed on every vehicle' },
+  tires: { name: 'Grippy tires', icon: '🛞', prices: [6, 12, 20], desc: 'Less sliding in corners and mud' },
+  tank: { name: 'Bigger gas tank', icon: '⛽', prices: [5, 10, 18], desc: '+10 liters each level' }
+};
+const PAINTS = [['Fire red', 0xc62f22], ['Sky blue', 0x2f7fd0], ['Lime', 0x6cc232], ['Sunset', 0xf08a1c], ['Grape', 0x7a3fb0], ['Midnight', 0x22262c], ['Gold', 0xd9a92a], ['Pink', 0xe2559a]];
+const boost = { turbo: 0, turboCd: 0, jumpCd: 0, emptyToast: -100 };
+function speedMul() { return (1 + 0.08 * prog.up.engine) * (boost.turbo > 0 ? 1.45 : 1) * (prog.fuel <= 0 ? 0.3 : 1); }
+function accelMul() { return (boost.turbo > 0 ? 1.8 : 1) * (prog.fuel <= 0 ? 0.5 : 1); }
+function gripMul() { return 1 + 0.15 * prog.up.tires; }
+function useTurbo() {
+  if (phase !== 'drive' || !prog.powers.turbo || quiz.open) return;
+  if (boost.turboCd > 0) { toast(`Turbo recharging · ${Math.ceil(boost.turboCd)}s`, 1.2); return; }
+  boost.turbo = 3; boost.turboCd = 10; sfx('gate'); toast('🚀 Turbo!', 1.2);
+}
+function useJump() {
+  if (phase !== 'drive' || !prog.powers.jump || quiz.open) return;
+  if (boost.jumpCd > 0 || !car.grounded) return;
+  car.vy = 10.5; car.grounded = false; car.y += 0.15; boost.jumpCd = 3; sfx('gate');
+}
+function updateLearn(dt, inp) {
+  boost.turbo = Math.max(0, boost.turbo - dt); boost.turboCd = Math.max(0, boost.turboCd - dt); boost.jumpCd = Math.max(0, boost.jumpCd - dt);
+  if (boost.turbo > 0) emit(car.x - Math.sin(car.heading) * 1.6, car.y + 0.7, car.z - Math.cos(car.heading) * 1.6, '#ffb347', 0.6, 0.8, 0.4, 0, 0.5, 0);
+  // Fuel: about 6 minutes of hard driving per 20 L
+  const speed = Math.hypot(car.vx, car.vz);
+  if (prog.fuel > 0) {
+    const use = (0.003 + 0.05 * inp.throttle * Math.min(1, speed / 10)) * (prog.powers.saver ? 0.5 : 1) * dt;
+    prog.fuel = Math.max(0, prog.fuel - use);
+    if (prog.fuel === 0) { toast('Out of gas! Find a ⛽ fuel house', 3.5); gemTarget = 'fuel'; updateGemBar(true); boost.emptyToast = simTime; }
+  } else if (simTime - boost.emptyToast > 25) { boost.emptyToast = simTime; toast('Running on fumes · follow the arrow to ⛽', 3); }
+  // Knock on a house door when you stop next to it
+  for (const h of houses) {
+    if (!h.ready) {
+      if ((h.t -= dt) <= 0) placeHouse(h);
+      continue;
+    }
+    h.icon.rotation.y += dt * 1.6; h.icon.position.y = 6 + Math.sin(simTime * 2 + h.x) * 0.25;
+    const [dx, dz] = doorSpot(h), d = Math.hypot(car.x - dx, car.z - dz);
+    if (h.wait) { if (d > 10) h.wait = false; continue; }
+    if (d < 4.5 && car.crashT <= 0) {
+      if (speed < 5) { openQuiz(h); break; }
+      if (simTime - knockToast > 4) { knockToast = simTime; toast('Slow down and stop at the door to knock'); }
+    }
+  }
+}
+// Gem bar: points and distance to the nearest house of each kind; tap to follow the arrow there
+const gemBar = $('gemBar');
+gemBar.innerHTML = KIND_KEYS.map(k => `<button data-k="${k}" aria-pressed="false"><span class="ic">${KINDS[k].icon}</span><span class="v" id="gv-${k}">0</span><span class="d" id="gd-${k}"></span>${k === 'fuel' ? '<span class="tank"><i id="fuelLvl"></i></span>' : ''}</button>`).join('');
+gemBar.addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  gemTarget = gemTarget === b.dataset.k ? null : b.dataset.k;
+  if (gemTarget) { const [h, d] = nearestHouse(gemTarget); toast(h ? `Follow the arrow to the ${KINDS[gemTarget].house.toLowerCase()} · ${(d / 1000).toFixed(1)} km` : 'None nearby right now'); }
+  updateGemBar(true); b.blur();
+});
+let gemBarT = 0;
+function updateGemBar(force) {
+  if (!force && (gemBarT += 0.05) < 0.25) return;
+  gemBarT = 0;
+  for (const k of KIND_KEYS) {
+    const [, d] = nearestHouse(k), btn = gemBar.querySelector(`[data-k="${k}"]`);
+    $('gv-' + k).textContent = k === 'fuel' ? `${Math.ceil(prog.fuel)} L` : k === 'coin' ? prog.coins : k === 'gem' ? prog.gems : prog.stars;
+    $('gd-' + k).textContent = d === Infinity ? '…' : `${(d / 1000).toFixed(1)} km`;
+    btn.setAttribute('aria-pressed', String(gemTarget === k));
+  }
+  gemBar.querySelector('[data-k="fuel"]').classList.toggle('low', prog.fuel < tankSize() * 0.25);
+  $('fuelLvl').style.width = (prog.fuel / tankSize() * 100) + '%';
+  document.body.classList.toggle('has-turbo', !!prog.powers.turbo);
+  document.body.classList.toggle('has-jump', !!prog.powers.jump);
+}
+$('turboBtn').addEventListener('click', e => { useTurbo(); e.currentTarget.blur(); });
+$('jumpBtn').addEventListener('click', e => { useJump(); e.currentTarget.blur(); });
+
+// ---- Badges ----
+const BADGES = {
+  first: ['🏠', 'First house', 'Opened your first gem house'],
+  math10: ['➕', 'Number whiz', '10 sums right'],
+  spell10: ['🔤', 'Spelling champ', '10 words spelled'],
+  streak5: ['🔥', 'On fire', '5 right in a row'],
+  streak10: ['🌟', 'Superstar', '10 right in a row'],
+  speedy: ['⚡', 'Lightning fast', 'Answered in under 5 seconds'],
+  fuel5: ['⛽', 'Never run dry', 'Visited 5 fuel houses'],
+  saver: ['🐷', 'Big saver', 'Had 50 coins at once'],
+  wheels: ['🚙', 'New wheels', 'Bought a vehicle'],
+  power: ['🦸', 'Super powered', 'Unlocked a superpower'],
+  chest: ['🎁', 'Treasure keeper', 'Opened a daily chest']
+};
+function earnBadge(id) {
+  if (prog.badges.includes(id)) return;
+  prog.badges.push(id); saveProg();
+  const b = BADGES[id];
+  setTimeout(() => { toast(`New badge! ${b[0]} ${b[1]}`, 3); sfx('coin'); }, 2500);
+}
+function checkBadges() {
+  if (prog.houses >= 1) earnBadge('first');
+  if (prog.math.right + prog.math.late >= 10) earnBadge('math10');
+  if (prog.spell.right + prog.spell.late >= 10) earnBadge('spell10');
+  if (prog.streak >= 5) earnBadge('streak5');
+  if (prog.streak >= 10) earnBadge('streak10');
+  if (prog.fuelHouses >= 5) earnBadge('fuel5');
+  if (prog.coins >= 50) earnBadge('saver');
+}
+
+// ---- Shop and trophy room (opened at the garage workbench and on the porch) ----
+const shopEl = $('shop');
+function openShop(which) {
+  shopEl.dataset.which = which;
+  shopEl.hidden = false;
+  renderShop();
+}
+function renderShop() {
+  const which = shopEl.dataset.which, body = $('shopBody');
+  $('shopBal').innerHTML = `🪙 ${prog.coins} &nbsp; 💎 ${prog.gems} &nbsp; ⭐ ${prog.stars} &nbsp; ⛽ ${Math.ceil(prog.fuel)}/${tankSize()} L`;
+  if (which === 'bench') {
+    $('shopTitle').textContent = 'Workbench';
+    const row = (id, icon, name, desc, price, cur, done) => `<div class="srow"><span class="si">${icon}</span><span class="sn"><b>${name}</b><small>${desc}</small></span>${done ? '<span class="sdone">Got it</span>' : `<button data-buy="${id}" ${price > (cur === '💎' ? prog.gems : prog.stars) ? 'class="poor"' : ''}>${price} ${cur}</button>`}</div>`;
+    let html = '<h3>Upgrades · pay with 💎 gems</h3>';
+    for (const [id, u] of Object.entries(UPGRADES)) { const lv = prog.up[id]; html += row('up-' + id, u.icon, `${u.name} ${lv < 3 ? `· level ${lv + 1}` : '· max'}`, u.desc, u.prices[lv], '💎', lv >= 3); }
+    html += `<h3>Paint the ${VNAMES[car.type]} · 4 💎</h3><div class="paints">${PAINTS.map(([n, c], i) => `<button data-buy="paint-${i}" aria-label="${n}" style="background:#${c.toString(16).padStart(6, '0')}"></button>`).join('')}</div>`;
+    html += '<h3>Superpowers · pay with ⭐ stars</h3>';
+    for (const [id, p] of Object.entries(POWERS)) html += row('pw-' + id, p.icon, p.name, p.desc, p.price, '⭐', !!prog.powers[id]);
+    body.innerHTML = html;
+  } else {
+    $('shopTitle').textContent = 'Trophy room';
+    const chestReady = prog.chest !== today();
+    let html = `<div class="srow chest"><span class="si">🎁</span><span class="sn"><b>Daily treasure chest</b><small>${chestReady ? '3 coins, 2 gems and 5 L of fuel' : 'Come back tomorrow for another one'}</small></span>${chestReady ? '<button data-buy="chest">Open</button>' : '<span class="sdone">Opened</span>'}</div>`;
+    html += `<h3>Badges · ${prog.badges.length} of ${Object.keys(BADGES).length}</h3><div class="badges">`;
+    for (const [id, [icon, name, desc]] of Object.entries(BADGES)) html += `<div class="badge${prog.badges.includes(id) ? ' got' : ''}" title="${desc}"><span>${prog.badges.includes(id) ? icon : '🔒'}</span><b>${name}</b><small>${desc}</small></div>`;
+    html += `</div><p class="snote">Houses opened: <b>${prog.houses}</b> · Best streak: <b>${prog.bestStreak}</b></p>`;
+    body.innerHTML = html;
+  }
+}
+shopEl.addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  if (b.id === 'shopClose') { shopEl.hidden = true; return; }
+  const id = b.dataset.buy; if (!id) return;
+  const pay = (cur, n) => { if (prog[cur] < n) { toast(cur === 'gems' ? 'Not enough 💎 · find gem houses' : 'Not enough ⭐ · find star houses'); return false; } prog[cur] -= n; return true; };
+  if (id.startsWith('up-')) { const k = id.slice(3), lv = prog.up[k]; if (lv < 3 && pay('gems', UPGRADES[k].prices[lv])) { prog.up[k]++; sfx('coin'); toast(`${UPGRADES[k].name} level ${prog.up[k]}!`); } }
+  else if (id.startsWith('pw-')) { const k = id.slice(3); if (!prog.powers[k] && pay('stars', POWERS[k].price)) { prog.powers[k] = true; earnBadge('power'); sfx('coin'); toast(`${POWERS[k].icon} ${POWERS[k].name} unlocked!`); } }
+  else if (id.startsWith('paint-')) { const [, c] = PAINTS[+id.slice(6)]; if (pay('gems', 4)) { prog.paint[car.type] = c; applyPaint(); sfx('coin'); } }
+  else if (id === 'chest' && prog.chest !== today()) { prog.chest = today(); prog.coins += 3; prog.gems += 2; prog.fuel = Math.min(tankSize(), prog.fuel + 5); earnBadge('chest'); sfx('coin'); toast('🎁 +3 🪙 +2 💎 +5 L ⛽'); }
+  saveProg(); renderShop(); updateGemBar(true);
+});
+function applyPaint() {
+  for (const t of Object.keys(models)) { const m = models[t].body.userData.paint; if (m && prog.paint[t] != null) m.color.set(prog.paint[t]); }
+}
+// Buying vehicles happens by walking up to them at home
+function buyVehicle(t) {
+  if (AIRCRAFT.includes(t)) { toast(prog.coins >= PRICES[t] ? 'You have enough! Flying arrives in the next update' : `Keep saving! ${PRICES[t] - prog.coins} more 🪙 · flying arrives in the next update`, 3); return false; }
+  if (prog.coins < PRICES[t]) { toast(`You need ${PRICES[t] - prog.coins} more 🪙 · find coin houses`, 2.5); return false; }
+  prog.coins -= PRICES[t]; prog.owned.push(t); earnBadge('wheels'); saveProg(); sfx('coin');
+  toast(`You bought the ${VNAMES[t]}! 🎉`, 2.5);
+  refreshVehicleState();
+  return true;
+}
+function refreshVehicleState() {
+  const picker = document.querySelector('.picker');
+  picker.innerHTML = Object.keys(SPECS).filter(owns).map(t => `<button data-v="${t}" aria-pressed="${t === car.type}">${t === 'atv' ? 'Quad' : t === 'bike' ? 'Bike' : t === 'monster' ? 'Monster' : t === 'buggy' ? 'Buggy' : 'Truck'}</button>`).join('');
+  picker.querySelectorAll('button').forEach(b => b.addEventListener('click', () => {
+    selectVehicle(b.dataset.v); applyOutfit(); race.state = 'free'; setNextGate(); placeCar(0, 0, Math.PI * 0.15); safePts.length = 0; updateGoals(); setMenu(false); b.blur();
+  }));
+  if (home.refreshSigns) home.refreshSigns();
+}
+
+// ---- Parent corner ----
+const parentEl = $('parent');
+function renderParent() {
+  for (const id of ['level', 'topics', 'timer', 'voice', 'freeVehicles']) $('p-' + id).value = String(learn[id]);
+  const line = (st, label) => {
+    const tot = st.right + st.late, tries = tot + st.wrong;
+    const tricky = Object.entries(st.items).filter(([, v]) => v.w > 0).sort((a, b) => b[1].w - a[1].w).slice(0, 6).map(([k, v]) => `${k.replace('-', '−')} <small>(${v.w}✗ ${v.r}✓)</small>`);
+    return `<p><b>${label}:</b> ${tot} solved (${st.right} in time, ${st.late} after the timer), ${st.wrong} wrong tries${tries ? ` · ${Math.round(tot / tries * 100)}% first-time accuracy` : ''}</p>${tricky.length ? `<p class="tricky">Needs practice: ${tricky.join(', ')}</p>` : ''}`;
+  };
+  $('p-stats').innerHTML = line(prog.math, 'Math') + line(prog.spell, 'Spelling') + `<p>Houses opened: <b>${prog.houses}</b> · Best streak: <b>${prog.bestStreak}</b> · Badges: <b>${prog.badges.length}</b></p>`;
+}
+$('parentBtn').addEventListener('click', () => { $('settings').hidden = true; parentEl.hidden = false; renderParent(); });
+$('parentDone').addEventListener('click', () => { parentEl.hidden = true; });
+for (const id of ['level', 'topics', 'timer', 'voice', 'freeVehicles']) $('p-' + id).addEventListener('change', e => {
+  const v = e.target.value;
+  learn[id] = id === 'timer' ? +v : (id === 'voice' || id === 'freeVehicles') ? v === 'true' : v;
+  store.set('bcr-learn-v1', learn);
+  if (id === 'freeVehicles') refreshVehicleState();
+});
+let resetArmed = 0;
+$('p-reset').addEventListener('click', e => {
+  if (performance.now() - resetArmed > 4000) { resetArmed = performance.now(); e.currentTarget.textContent = 'Tap again to erase all progress'; return; }
+  Object.assign(prog, { coins: 0, gems: 0, stars: 0, fuel: 20, owned: ['bike'], up: { engine: 0, tires: 0, tank: 0 }, paint: {}, powers: {}, badges: [], houses: 0, fuelHouses: 0, streak: 0, bestStreak: 0, chest: '', math: BLANK_STATS(), spell: BLANK_STATS() });
+  saveProg(); refreshVehicleState(); renderParent(); updateGemBar(true);
+  e.currentTarget.textContent = 'Progress erased';
+});
 
 // ---------- Home: rider picker, yard and garage ----------
 // The game opens at the house. Pick a rider on the turntable, walk to the garage, and walk up to a vehicle to ride it.
@@ -2603,8 +3317,90 @@ const TURNTABLE = [-11, 2.4], PICK_CAM = [-11, 1.6, 6.9];
     sign.position.set(p.x, GH - 0.75, GZ + GD / 2 - 1.0); S.add(sign); home.signs.push(sign);
     for (const sd of [-1, 1]) box(S, 0.015, 0.4, 0.015, MAT.metal, p.x + sd * 0.6, GH - 0.28, GZ + GD / 2 - 1.0);
     solid(p.x - p.hw, p.x + p.hw, p.z - p.hd, p.z + p.hd);
-    home.spots.push(p);
+    home.spots.push(Object.assign(p, { kind: 'vehicle', sign }));
   }
+  // Vehicle shop lot beside the garage: buggy and monster truck to buy, aircraft to save up for
+  const lot = new THREE.Mesh(new THREE.PlaneGeometry(16, 44), std(0x3d3f42, 0.95)); lot.rotation.x = -Math.PI / 2; lot.position.set(25, 0.012, 8); lot.receiveShadow = true; S.add(lot);
+  for (let k = 0; k < 5; k++) box(S, 0.12, 0.01, 6, std(0xf2f2f2, 0.8), 18.6, 0.02, -9 + k * 8.5);
+  const archMat = std(0x2c5a86, 0.6, 0.2);
+  for (const z of [-13, 29]) box(S, 0.3, 4.4, 0.3, archMat, 17.6, 2.2, z);
+  const shopSign = new THREE.Mesh(new THREE.PlaneGeometry(9, 1.1), new THREE.MeshBasicMaterial({ map: signTex('VEHICLE SHOP', '#f2a33a'), side: THREE.DoubleSide }));
+  shopSign.position.set(17.4, 4.2, -9.5); shopSign.rotation.y = -Math.PI / 2; S.add(shopSign);
+  const white = std(0xf2f2ee, 0.45, 0.2), dark = std(0x26292d, 0.5, 0.4), glassM = std(0x1f2b36, 0.15, 0.3);
+  const plane = () => {
+    const g = new THREE.Group(), red = std(0xc62f22, 0.45, 0.2);
+    cyl(g, 0.55, 0.38, 6, 16, white, 0, 1.4, 0, Math.PI / 2);
+    cyl(g, 0.38, 0.12, 1.2, 16, red, 0, 1.4, 3.5, Math.PI / 2);
+    box(g, 9, 0.1, 1.4, white, 0, 1.75, 0.6); box(g, 9.02, 0.11, 0.25, red, 0, 1.75, 0.6);
+    box(g, 3, 0.08, 0.9, white, 0, 1.5, -2.8); box(g, 0.08, 1.2, 0.9, red, 0, 2.05, -2.8, 0.2);
+    box(g, 0.9, 0.5, 1.2, glassM, 0, 1.95, 1.2);
+    const prop = new THREE.Group(); prop.position.set(0, 1.4, 4.12); box(prop, 0.12, 2.0, 0.04, dark, 0, 0, 0); g.add(prop);
+    for (const sd of [-1, 1]) { limb(g, V(sd * 0.4, 1.0, 1.4), V(sd * 0.8, 0.3, 1.4), 0.06, 0.06, dark); cyl(g, 0.3, 0.3, 0.15, 14, MAT.rubber, sd * 0.8, 0.3, 1.4, 0, 0, Math.PI / 2); }
+    cyl(g, 0.15, 0.15, 0.1, 10, MAT.rubber, 0, 0.15, -2.6, 0, 0, Math.PI / 2);
+    return { g, spin: prop, axis: 'z' };
+  };
+  const heli = () => {
+    const g = new THREE.Group(), yel = std(0xf2b81c, 0.4, 0.3);
+    const cab = new THREE.Mesh(new THREE.SphereGeometry(1.1, 18, 14), yel); cab.scale.set(1, 0.95, 1.5); cab.position.y = 1.6; g.add(cab);
+    const win = new THREE.Mesh(new THREE.SphereGeometry(0.9, 16, 10, 0, Math.PI * 2, 0, Math.PI / 2.4), glassM); win.rotation.x = Math.PI / 2.2; win.position.set(0, 1.75, 0.95); g.add(win);
+    cyl(g, 0.22, 0.1, 4.2, 10, yel, 0, 1.9, -3.2, Math.PI / 2);
+    box(g, 0.08, 0.9, 0.6, yel, 0, 2.3, -5.1);
+    const tr = new THREE.Group(); tr.position.set(0.12, 2.3, -5.1); box(tr, 0.04, 1.1, 0.1, dark, 0, 0, 0); g.add(tr);
+    cyl(g, 0.08, 0.08, 0.5, 8, dark, 0, 2.75, 0);
+    const rotor = new THREE.Group(); rotor.position.set(0, 3.0, 0); for (let k = 0; k < 2; k++) box(rotor, 0.25, 0.04, 8, dark, 0, 0, 0, 0, k * Math.PI / 2); g.add(rotor);
+    for (const sd of [-1, 1]) { cyl(g, 0.06, 0.06, 3.4, 8, dark, sd * 0.9, 0.12, 0, Math.PI / 2); for (const z of [-0.8, 0.8]) limb(g, V(sd * 0.9, 0.12, z), V(sd * 0.6, 0.8, z), 0.06, 0.06, dark); }
+    return { g, spin: rotor, axis: 'y' };
+  };
+  const jet = () => {
+    const g = new THREE.Group(), gray = std(0x7d8792, 0.4, 0.5);
+    cyl(g, 0.6, 0.75, 6.5, 14, gray, 0, 1.5, -0.5, Math.PI / 2);
+    cyl(g, 0.6, 0.02, 2.4, 14, gray, 0, 1.5, 3.95, Math.PI / 2);
+    const can = new THREE.Mesh(new THREE.SphereGeometry(0.5, 14, 10), glassM); can.scale.set(0.9, 0.7, 2); can.position.set(0, 2.0, 1.8); g.add(can);
+    const wing = new THREE.Shape(); wing.moveTo(0, 2); wing.lineTo(3.4, -1.6); wing.lineTo(3.4, -2.4); wing.lineTo(0, -2.4); wing.lineTo(0, 2);
+    const wg = new THREE.ExtrudeGeometry(wing, { depth: 0.12, bevelEnabled: false });
+    for (const sd of [-1, 1]) { const w = new THREE.Mesh(wg, gray); w.rotation.x = -Math.PI / 2; w.scale.x = sd; w.position.set(0, 1.45, -0.6); g.add(w); }
+    for (const sd of [-1, 1]) box(g, 0.08, 1.4, 1.3, gray, sd * 0.55, 2.4, -3.0, 0, 0, sd * 0.25);
+    cyl(g, 0.55, 0.55, 0.3, 14, std(0x2a2a2a, 0.3, 0.6, { emissive: 0xff6a20, emissiveIntensity: 0.25 }), 0, 1.5, -3.85, Math.PI / 2);
+    for (const [x, z] of [[0, 3], [-1.1, -1], [1.1, -1]]) { limb(g, V(x, 1.0, z), V(x, 0.3, z), 0.08, 0.08, dark); cyl(g, 0.25, 0.25, 0.15, 12, MAT.rubber, x, 0.25, z, 0, 0, Math.PI / 2); }
+    return { g, spin: null };
+  };
+  home.spinners = [];
+  const lotItems = [
+    { type: 'buggy', x: 23, z: -9, hw: 1.0, hd: 1.6 },
+    { type: 'monster', x: 24, z: -0.5, hw: 1.6, hd: 2.6 },
+    { type: 'plane', x: 25.5, z: 8.5, hw: 1.2, hd: 3.6, make: plane },
+    { type: 'heli', x: 25.5, z: 17.5, hw: 1.3, hd: 2.4, make: heli },
+    { type: 'jet', x: 25.5, z: 26, hw: 1.1, hd: 3.6, make: jet }
+  ];
+  for (const it of lotItems) {
+    let obj;
+    if (it.make) { const a = it.make(); obj = a.g; if (a.spin) home.spinners.push(a); }
+    else { const v = buildVehicle(it.type); for (const o of v.body.userData.rider || []) o.visible = false; obj = v.root; }
+    obj.position.set(it.x, 0, it.z); obj.rotation.y = -Math.PI / 2; S.add(shade(obj));
+    const sign = new THREE.Mesh(new THREE.PlaneGeometry(2.6, 0.97), new THREE.MeshBasicMaterial({ side: THREE.DoubleSide }));
+    sign.position.set(it.x - it.hd - 0.4, 1.7, it.z + (it.make ? 3.3 : it.hw + 1.6)); sign.rotation.y = -Math.PI / 2; S.add(sign);
+    box(S, 0.08, 1.2, 0.08, MAT.metal, sign.position.x, 0.6, sign.position.z);
+    // Aircraft lie sideways (nose toward the driveway), so their footprint swaps axes
+    home.spots.push({ kind: 'vehicle', type: it.type, x: it.x, z: it.z, hw: it.hd, hd: it.hw, sign, label: VNAMES[it.type].toUpperCase(), color: '#f2a33a' });
+    solid(it.x - it.hd, it.x + it.hd, it.z - it.hw, it.z + it.hw);
+  }
+  home.spots.push({ kind: 'bench', x: GX - 1.6, z: GZ - GD / 2 + 0.6, hw: 1.6, hd: 0.45 });
+  home.spots.push({ kind: 'porch', x: HX + 1.8, z: HZ + HD / 2 + 0.6, hw: 0.8, hd: 0.5 });
+  home.porch = [HX - HW / 2, HX + HW / 2, HZ + HD / 2, HZ + HD / 2 + 2.4];
+  home.refreshSigns = () => {
+    for (const sp of home.spots) {
+      if (sp.kind !== 'vehicle') continue;
+      const own = owns(sp.type), air = AIRCRAFT.includes(sp.type);
+      const c = document.createElement('canvas'); c.width = 256; c.height = 96; const g = c.getContext('2d');
+      g.fillStyle = own ? '#1d211e' : '#2a2216'; g.fillRect(0, 0, 256, 96); g.fillStyle = sp.color; g.fillRect(0, 86, 256, 10);
+      g.fillStyle = '#f4ead2'; g.textAlign = 'center'; g.textBaseline = 'middle';
+      g.font = `bold ${own ? 50 : 38}px "Saira Condensed", "Arial Narrow", sans-serif`;
+      g.fillText(sp.label, 128, own ? 44 : 30);
+      if (!own) { g.fillStyle = '#ffd75e'; g.font = 'bold 30px "Saira Condensed", "Arial Narrow", sans-serif'; g.fillText(`${PRICES[sp.type]} COINS${air ? ' · SOON' : ''}`, 128, 66); }
+      if (sp.sign.material.map) sp.sign.material.map.dispose();
+      sp.sign.material.map = new THREE.CanvasTexture(c); sp.sign.material.needsUpdate = true;
+    }
+  };
   // Everyone in the picker; only the chosen one is shown
   RIDERS.forEach(r => { const p = makePerson(r); p.root.visible = false; S.add(p.root); home.people.push(p); });
   // The family dog follows you around
@@ -2667,7 +3463,8 @@ function goHome() {
   p.root.position.set(home.x, 0, home.z);
   Object.assign(home.dog, { x: 10.5, z: 5.5 });
   setPhase('walk');
-  toast('Back home · walk up to a vehicle to ride it', 2.5);
+  if (prog.fuel < 8) { prog.fuel = 8; saveProg(); toast('Back home · the garage topped up your tank to 8 L ⛽', 3); }
+  else toast('Back home · walk up to a vehicle to ride it', 2.5);
 }
 function applyOutfit() {
   const r = RIDERS[home.idx];
@@ -2679,34 +3476,46 @@ function applyOutfit() {
     if (m.helmet) m.helmet.color.set(r.helmet);
   }
 }
-function tryRide() {
+function homeAction() {
   if (phase !== 'walk' || !home.near) return;
-  const type = home.near.type;
+  const sp = home.near;
+  if (sp.kind === 'bench') { openShop('bench'); return; }
+  if (sp.kind === 'porch') { openShop('trophy'); return; }
+  if (!owns(sp.type)) { if (buyVehicle(sp.type)) { home.near = null; } return; }
+  const type = sp.type;
   selectVehicle(type);
   applyOutfit();
   setPhase('drive');
   race.state = 'free'; setNextGate(); placeCar(0, 0, Math.PI * 0.15); safePts.length = 0; updateGoals();
   initAudio();
-  toast(`${RIDERS[home.idx].name} takes the ${SPECS[type].name} · open the menu for games`, 3);
+  toast(prog.houses ? `${RIDERS[home.idx].name} takes the ${VNAMES[type]}` : 'Find houses with floating gems! Tap ⛽ 🪙 💎 ⭐ at the top to follow the arrow', 4);
 }
 $('prevRider').addEventListener('click', e => { cycleRider(-1); e.currentTarget.blur(); });
 $('nextRider').addEventListener('click', e => { cycleRider(1); e.currentTarget.blur(); });
 $('chooseRider').addEventListener('click', e => { initAudio(); chooseRider(); e.currentTarget.blur(); });
-rideBtn.addEventListener('click', e => { tryRide(); e.currentTarget.blur(); });
+rideBtn.addEventListener('click', e => { homeAction(); e.currentTarget.blur(); });
 $('homeBtn').addEventListener('click', e => { goHome(); e.currentTarget.blur(); });
 function homeKey(e) {
   if (phase === 'pick') {
     if (e.code === 'ArrowLeft' || e.code === 'KeyA') cycleRider(-1);
     if (e.code === 'ArrowRight' || e.code === 'KeyD') cycleRider(1);
     if (e.code === 'Enter' || e.code === 'Space') { initAudio(); chooseRider(); }
-  } else if (e.code === 'KeyE' || e.code === 'Enter' || e.code === 'Space') tryRide();
+  } else if (e.code === 'KeyE' || e.code === 'Enter' || e.code === 'Space') homeAction();
 }
 function homePad(edge, gp) {
   if (phase === 'pick') {
     if (edge(14)) cycleRider(-1);
     if (edge(15)) cycleRider(1);
     if (edge(0)) chooseRider();
-  } else if (edge(2) || edge(3)) tryRide();
+  } else if (edge(2) || edge(3)) homeAction();
+}
+function spotLabel(sp) {
+  if (sp.kind === 'bench') return 'Upgrades & superpowers';
+  if (sp.kind === 'porch') return prog.chest !== today() ? 'Open today\'s chest 🎁' : 'Trophy room 🏆';
+  const n = VNAMES[sp.type];
+  if (owns(sp.type)) return `Ride the ${n}`;
+  if (AIRCRAFT.includes(sp.type)) return `${n} · ${PRICES[sp.type]} 🪙 · coming soon`;
+  return prog.coins >= PRICES[sp.type] ? `Buy the ${n} · ${PRICES[sp.type]} 🪙` : `${n} · ${PRICES[sp.type]} 🪙 · need ${PRICES[sp.type] - prog.coins} more`;
 }
 function homeCollide() {
   const R = 0.32, b = home.bounds;
@@ -2769,9 +3578,11 @@ function updateHome(dt) {
     if (near !== home.near) {
       home.near = near;
       rideBtn.hidden = !near;
-      if (near) { rideBtn.textContent = `Ride the ${near.label === 'QUAD' ? 'Quad' : SPECS[near.type].name}`; sfx('beep', 1); }
+      if (near) { rideBtn.textContent = spotLabel(near); rideBtn.classList.toggle('poor', near.kind === 'vehicle' && !owns(near.type) && (prog.coins < PRICES[near.type] || AIRCRAFT.includes(near.type))); sfx('beep', 1); }
     }
-    walkHint.hidden = !!near || Math.hypot(home.x - 9, home.z + 7) < 6;
+    const onPorch = home.x > home.porch[0] && home.x < home.porch[1] && home.z > home.porch[2] && home.z < home.porch[3];
+    p.root.position.y = onPorch ? 0.37 : 0;
+    walkHint.hidden = !!near || Math.hypot(home.x - TURNTABLE[0], home.z - TURNTABLE[1]) > 14;
     if (!cam.drag && now - cam.lastDrag > 2.5) cam.yaw *= Math.exp(-1.5 * dt);
     const yaw = home.heading + cam.yaw, dist = 4.6, inGarage = Math.abs(home.x - 9) < 5 && home.z < -2;
     const h = inGarage ? 2.2 : 2.6;
@@ -2782,6 +3593,7 @@ function updateHome(dt) {
     camera.lookAt(home.x, 1.3, home.z);
   }
   home.signs.forEach((s, k) => { s.rotation.y = Math.sin(now * 0.8 + k) * 0.06; });
+  for (const sp of home.spinners) sp.spin.rotation[sp.axis] += dt * (sp.axis === 'y' ? 1.2 : 3);
   home.sky.position.copy(camera.position);
 }
 
@@ -2797,6 +3609,9 @@ placeCar(0, 0, Math.PI * 0.15);
 setNextGate();
 updateGoals();
 setMode(store.get('bcr-mode-v1', 'racing'));
+refreshVehicleState();
+applyPaint();
+updateGemBar(true);
 enterPick();
 
 function update(dt) {
@@ -2822,14 +3637,16 @@ function frame(now) {
   const dt = Math.min(0.05, (now - last) / 1000);
   last = now;
   if (phase !== 'drive') {
-    updateHome(dt);
+    if (shopEl.hidden && parentEl.hidden) updateHome(dt); else { pollGamepad(); home.sky.position.copy(camera.position); }
     updateAudio(dt, lastInput);
     renderer.render(home.scene, camera);
     if (toastTimer > 0 && (toastTimer -= dt) <= 0) toastEl.classList.remove('show');
     requestAnimationFrame(frame);
     return;
   }
-  update(dt);
+  if (quiz.open || !shopEl.hidden || !parentEl.hidden) { pollGamepad(); updateQuiz(); lastInput = { steer: 0, throttle: 0, brake: 0, hand: false }; }
+  else { update(dt); if (car.crashT <= 0) updateLearn(dt, lastInput); }
+  updateGemBar();
   poseVehicle(dt);
   updateAnimals(dt);
   updatePuffs(dt);

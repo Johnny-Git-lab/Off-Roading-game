@@ -474,6 +474,13 @@ body:not(.touch) .ride-btn::after { content: " · E"; opacity: 0.6; }
     <option value="top">Top-down · from above</option>
     <option value="hood">On the vehicle</option>
   </select>
+  <label class="label" for="gfxSel">Graphics</label>
+  <select id="gfxSel">
+    <option value="auto">Auto · keeps it smooth</option>
+    <option value="smooth">Smooth · fastest, simpler shadows</option>
+    <option value="sharp">Sharp · best looking</option>
+  </select>
+  <span class="note" id="fpsNote"></span>
   <label class="label" for="steerSel">Steering sensitivity</label>
   <select id="steerSel">
     <option value="gentle">Gentle</option>
@@ -1557,7 +1564,8 @@ function physics(dt, inp) {
   const s = SPECS[car.type];
   let fx = Math.sin(car.heading), fz = Math.cos(car.heading), rx = -fz, rz = fx;
   const st = STEER[settings.steer] || STEER.normal;
-  car.steer += (inp.steer - car.steer) * Math.min(1, dt * (Math.abs(inp.steer) > Math.abs(car.steer) ? st.ramp : st.ramp + 4));
+  const ramp = st.ramp + (pad.steer !== 0 ? 2.5 : 0);
+  car.steer += (inp.steer - car.steer) * Math.min(1, dt * (Math.abs(inp.steer) > Math.abs(car.steer) ? ramp : ramp + 4));
 
   const gH = groundHeight(car.x, car.z);
   const depth = Math.abs(car.x - riverX(car.z)) < RIVER_W ? waterLevel(car.z) - gH : 0;
@@ -2203,13 +2211,42 @@ function drawMap() {
 const CRASH = { never: Infinity, tough: 16, normal: 11, easy: 7 };
 const STEER = { gentle: { gain: 0.55, ramp: 3.2 }, normal: { gain: 0.75, ramp: 4.5 }, sharp: { gain: 1, ramp: 7 } };
 const SPEED_LIMIT = { full: 1, fast: 0.8, easy: 0.6 };
-const settings = Object.assign({ crash: 'tough', camera: 'chase', steer: 'normal', speed: 'full', assist: 'off', animals: 'all' }, store.get('bcr-settings-v1', {}));
-for (const [k, id] of [['crash', 'crashSel'], ['camera', 'camSel'], ['steer', 'steerSel'], ['speed', 'speedSel'], ['assist', 'assistSel'], ['animals', 'animalSel']]) {
+const settings = Object.assign({ gfx: 'auto', crash: 'tough', camera: 'chase', steer: 'normal', speed: 'full', assist: 'off', animals: 'all' }, store.get('bcr-settings-v1', {}));
+for (const [k, id] of [['gfx', 'gfxSel'], ['crash', 'crashSel'], ['camera', 'camSel'], ['steer', 'steerSel'], ['speed', 'speedSel'], ['assist', 'assistSel'], ['animals', 'animalSel']]) {
   const el = $(id);
   el.value = settings[k];
-  el.addEventListener('change', () => { settings[k] = el.value; store.set('bcr-settings-v1', settings); if (k === 'camera') { cam.snap = true; cam.yaw = 0; updateCamLabel(); } });
+  el.addEventListener('change', () => { settings[k] = el.value; store.set('bcr-settings-v1', settings); if (k === 'camera') { cam.snap = true; cam.yaw = 0; updateCamLabel(); } if (k === 'gfx') applyGfx(); });
 }
 updateCamLabel();
+// ---- Graphics quality: big Retina screens (iPad) can't always draw every pixel at 60 fps,
+// so Auto lowers the render resolution, then drops soft shadows, until frames come fast again
+const MAX_RATIO = Math.min(window.devicePixelRatio || 1, 2);
+const perf = { ratio: MAX_RATIO, shadows: true, acc: 0, n: 0, slow: 0, fps: 60 };
+function setShadows(on) {
+  if (perf.shadows === on) return;
+  perf.shadows = on; renderer.shadowMap.enabled = on;
+  for (const sc of [scene, home.scene]) sc.traverse(o => { if (o.material) for (const m of [].concat(o.material)) m.needsUpdate = true; });
+}
+function setRatio(r) { if (r === perf.ratio) return; perf.ratio = r; renderer.setPixelRatio(r); resize(); }
+function applyGfx() {
+  perf.acc = perf.n = perf.slow = 0;
+  if (settings.gfx === 'smooth') { setRatio(1); setShadows(false); }
+  else if (settings.gfx === 'sharp') { setRatio(MAX_RATIO); setShadows(true); }
+  else { setRatio(Math.min(MAX_RATIO, 1.5)); setShadows(true); }
+}
+function adaptGfx(raw) {
+  if (raw > 0.25) return; // tab was hidden or paused
+  perf.acc += raw; perf.n++;
+  if (perf.acc < 1.5) return;
+  const avg = perf.acc / perf.n; perf.acc = perf.n = 0;
+  perf.fps = Math.round(1 / avg);
+  $('fpsNote').textContent = `Running at ${perf.fps} frames per second${perf.ratio < MAX_RATIO ? ` · ${Math.round(perf.ratio / MAX_RATIO * 100)}% resolution` : ''}${perf.shadows ? '' : ' · simple shadows'}`;
+  if (settings.gfx !== 'auto') return;
+  if (avg > 1 / 48) {
+    if (perf.ratio > 1) setRatio(Math.max(1, perf.ratio - 0.25));
+    else if (perf.shadows && ++perf.slow >= 2) setShadows(false);
+  } else if (avg < 1 / 57 && perf.ratio < Math.min(MAX_RATIO, 1.5)) setRatio(perf.ratio + 0.25);
+}
 const safePts = [];
 let safeTimer = 0;
 function trackSafe(dt) {
@@ -2477,7 +2514,7 @@ function pollGamepad() {
   let st = Math.abs(ax) < dz ? 0 : (ax - Math.sign(ax) * dz) / (1 - dz);
   if (btn(14).pressed) st = -1;
   if (btn(15).pressed) st = 1;
-  pad.steer = st * Math.abs(st);
+  pad.steer = st * (0.35 + 0.65 * Math.abs(st));
   pad.throttle = Math.max(btn(7).value, btn(0).pressed ? 1 : 0, btn(12).pressed ? 1 : 0);
   pad.brake = Math.max(btn(6).value, btn(1).pressed ? 1 : 0, btn(13).pressed ? 1 : 0);
   pad.hand = btn(5).pressed;
@@ -4123,6 +4160,7 @@ function resize() {
 }
 addEventListener('resize', resize);
 resize();
+applyGfx();
 selectVehicle('atv');
 placeCar(0, 0, Math.PI * 0.15);
 setNextGate();
@@ -4153,9 +4191,14 @@ function update(dt) {
 
 const countEl = $('count'), speedSub = $('speedSub'), chip = $('surfaceChip'), startBtn = $('startRace');
 let lastCount = null, last = performance.now(), hudTimer = 0, mapTimer = 0, lastMph = -1, lastSurf = null;
+let smoothDt = 1 / 60;
 function frame(now) {
-  const dt = Math.min(0.05, (now - last) / 1000);
+  const raw = (now - last) / 1000;
   last = now;
+  adaptGfx(raw);
+  // Average out uneven frame times so motion doesn't judder; a real slowdown still comes through within a few frames
+  smoothDt += (Math.min(0.05, raw) - smoothDt) * 0.3;
+  const dt = smoothDt;
   if (phase !== 'drive') {
     if (shopEl.hidden && parentEl.hidden && pinEl.hidden && (loginEl.hidden || phase === 'pick')) updateHome(dt); else { pollGamepad(); home.sky.position.copy(camera.position); }
     updateAudio(dt, lastInput);

@@ -21,7 +21,7 @@ Settings → Parent corner is behind a 4-digit parent PIN. It sets daily limits 
 
 - **Keyboard:** WASD or the arrow keys to drive, Space for the handbrake, R to reset, C to change the camera, H for the horn.
 - **Touch:** the steering slider is on the left; the gas and brake slider is on the right.
-- **Game controller:** A or RT for gas, B or LT to brake, Y for the camera, X for the horn, left stick click to jump, right stick click for turbo. In question and shop windows the D-pad moves between buttons, A presses and B closes.
+- **Game controller:** RT or A for gas, LT or B to brake, left stick steers, RB handbrake, Y camera, X horn, LB reset, left stick click jump, right stick click turbo, View steps the arrow through the gems and home, Menu opens the menu. At home: D-pad or LB/RB picks the rider, A chooses, X or Y rides the vehicle you're standing next to. In menus and windows the D-pad moves, A presses (and steps a dropdown to its next choice), B closes. Settings → Game controller shows a live button test.
 
 ## Play
 

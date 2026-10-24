@@ -249,6 +249,7 @@ kbd { font-family: var(--font-display); font-size: 12px; padding: 0 5px; border:
 }
 body:not(.touch) .ride-btn { bottom: calc(var(--edge) + 40px); }
 body:not(.touch) .ride-btn::after { content: " · E"; opacity: 0.6; }
+body.pad .ride-btn::after { content: " · X"; opacity: 0.6; }
 @keyframes pop { from { transform: translateX(-50%) scale(0.8); opacity: 0; } }
 @media (max-height: 500px) {
   .home-title h1 { font-size: 22px; }
@@ -2501,7 +2502,7 @@ function pollGamepad() {
   // Prefer a controller the browser maps to the standard Xbox layout
   try { for (const g of (navigator.getGamepads ? navigator.getGamepads() : [])) if (g && g.connected && (!gp || (g.mapping === 'standard' && gp.mapping !== 'standard'))) gp = g; } catch (e) { /* not allowed here */ }
   if (!gp) { pad.steer = pad.throttle = pad.brake = 0; pad.hand = false; if (!$('settings').hidden) padTest(null); return; }
-  if (!pad.seen) { pad.seen = true; toast('Controller connected · right trigger gas, left trigger brake'); }
+  if (!pad.seen) { pad.seen = true; document.body.classList.add('pad'); toast('Controller connected · RT gas · LT brake · View picks a gem · Menu opens the menu', 4); }
   // Some browsers report an unmapped layout where the triggers are axes 2 and 5 (-1 released, +1 pulled).
   // Only trust such an axis after it has read "released" once, so a resting 0 isn't taken as half throttle.
   const std = gp.mapping === 'standard';
@@ -2519,12 +2520,13 @@ function pollGamepad() {
   pad.brake = Math.max(btn(6).value, btn(1).pressed ? 1 : 0, btn(13).pressed ? 1 : 0);
   pad.hand = btn(5).pressed;
   const edge = i => btn(i).pressed && !pad.prev[i];
-  const dlg = !pinEl.hidden ? pinEl : !timeupEl.hidden ? timeupEl : !loginEl.hidden ? loginEl : !quizEl.hidden ? quizEl : !shopEl.hidden ? shopEl : !parentEl.hidden ? parentEl : !$('settings').hidden ? $('settings') : null;
+  const dlg = !pinEl.hidden ? pinEl : !timeupEl.hidden ? timeupEl : !loginEl.hidden ? loginEl : !quizEl.hidden ? quizEl : !shopEl.hidden ? shopEl : !parentEl.hidden ? parentEl : !$('settings').hidden ? $('settings') : !menuBody.hidden ? $('menu') : null;
   if (dlg) { padDialog(dlg, edge); pad.prev = gp.buttons.map(b => b.pressed); pad.steer = pad.throttle = pad.brake = 0; return; }
   if (phase !== 'drive') { homePad(edge); pad.prev = gp.buttons.map(b => b.pressed); return; }
   if (edge(3)) cycleCamera();
   if (edge(2)) honk();
-  if (edge(4) || edge(8)) resetAction();
+  if (edge(4)) resetAction();
+  if (edge(8)) cycleGem();
   if (edge(9)) setMenu(menuBody.hidden);
   if (edge(11)) useTurbo();
   if (edge(10)) useJump();
@@ -2557,6 +2559,7 @@ function padDialog(dlg, edge) {
   const dirs = { 12: [0, -1], 13: [0, 1], 14: [-1, 0], 15: [1, 0] };
   for (const [i, [dx, dy]] of Object.entries(dirs)) {
     if (!edge(+i)) continue;
+    if (cur && cur.tagName === 'SELECT' && dx) { cur.selectedIndex = (cur.selectedIndex + dx + cur.options.length) % cur.options.length; cur.dispatchEvent(new Event('change')); toast(cur.options[cur.selectedIndex].text, 1.2); continue; }
     if (!cur) { (items.find(b => !b.closest('.q-tools')) || items[0]).focus(); return; }
     const r = cur.getBoundingClientRect(), cx = r.left + r.width / 2, cy = r.top + r.height / 2;
     let best = null, bd = Infinity;
@@ -2569,7 +2572,13 @@ function padDialog(dlg, edge) {
     }
     if (best) best.focus();
   }
-  if (edge(0)) { if (cur) cur.click(); else (items.find(b => !b.closest('.q-tools')) || items[0]).focus(); }
+  if (dlg.id === 'menu' && edge(9)) { setMenu(false); return; }
+  // A on a dropdown steps to its next choice (a controller can't open the dropdown list)
+  if (edge(0)) {
+    if (cur && cur.tagName === 'SELECT') { cur.selectedIndex = (cur.selectedIndex + 1) % cur.options.length; cur.dispatchEvent(new Event('change')); toast(cur.options[cur.selectedIndex].text, 1.2); }
+    else if (cur) cur.click(); else (items.find(b => !b.closest('.q-tools')) || items[0]).focus();
+  }
+  if (dlg.id === 'menu' && edge(1)) { setMenu(false); return; }
   if (edge(1)) { if (dlg === quizEl) leaveHouse(); else if (dlg !== timeupEl && dlg.id !== 'settings' && (dlg !== loginEl || player)) dlg.hidden = true; }
 }
 
@@ -3281,6 +3290,12 @@ gemBar.addEventListener('click', e => {
   updateGemBar(true); b.blur();
 });
 let gemBarT = 0;
+// Controller View button: step the arrow through fuel, coins, gems, stars, home, then off
+function cycleGem() {
+  const order = [...KIND_KEYS, 'home'], next = order[order.indexOf(gemTarget) + 1];
+  if (next) gemBar.querySelector(`[data-k="${next}"]`).click();
+  else if (gemTarget) { gemBar.querySelector(`[data-k="${gemTarget}"]`).click(); toast('Arrow off', 1.2); }
+}
 function updateGemBar(force) {
   if (!force && (gemBarT += 0.05) < 0.25) return;
   gemBarT = 0;
@@ -3921,8 +3936,8 @@ function homeKey(e) {
 }
 function homePad(edge, gp) {
   if (phase === 'pick') {
-    if (edge(14)) cycleRider(-1);
-    if (edge(15)) cycleRider(1);
+    if (edge(14) || edge(4)) cycleRider(-1);
+    if (edge(15) || edge(5)) cycleRider(1);
     if (edge(0)) chooseRider();
   } else if (edge(2) || edge(3)) homeAction();
 }

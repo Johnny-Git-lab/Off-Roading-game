@@ -409,6 +409,10 @@ body.pad .ride-btn::after { content: " · X"; opacity: 0.6; }
 .vehpick .row span.on { background: var(--accent); border-color: var(--accent); color: #1c1608; transform: scale(1.08); }
 .vehpick small { font-size: 12px; color: var(--hud-dim); }
 @media (max-height: 500px) { .vehpick { top: 58%; } .vehpick .row span { padding: 4px 9px; font-size: 14px; } }
+.sound-btn { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(var(--edge) + 8px + env(safe-area-inset-bottom, 0px)); padding: 8px 14px; border-radius: 20px; cursor: pointer; z-index: 3; font: 700 15px var(--font-display); letter-spacing: 0.04em; }
+.picking .sound-btn { bottom: auto; top: calc(var(--edge) + 64px + env(safe-area-inset-top, 0px)); }
+.modal .sound-btn, .menu-open .sound-btn { display: none !important; }
+@media (max-width: 560px) { .sound-btn { bottom: auto; top: calc(var(--edge) + var(--map) + 96px + env(safe-area-inset-top, 0px)); } }
 /* The open game menu needs the top and right of the screen */
 .menu-open .gembar, .menu-open .pw, .menu-open .horn, .menu-open #pedal { display: none !important; }
 /* Walking always gets the turn and walk sliders, even with tilt steering on */
@@ -567,6 +571,7 @@ body.pad .ride-btn::after { content: " · X"; opacity: 0.6; }
 <button class="ride-btn" id="rideBtn" hidden>Ride</button>
 
 <div class="vehpick panel" id="vehPick" hidden aria-live="polite"></div>
+<button class="sound-btn glass" id="soundBtn" hidden>🔇 Tap for sound</button>
 <nav class="gembar" id="gemBar" aria-label="Points and gem houses"></nav>
 <button class="pw glass" id="turboBtn" aria-label="Turbo boost">TURBO</button>
 <button class="pw glass" id="jumpBtn" aria-label="Super jump">JUMP</button>
@@ -1872,7 +1877,10 @@ const audio = { ctx: null, on: store.get('bcr-sound-v1', true), rpm: 0 };
 const ENGINE = { atv: { lo: 34, hi: 118, gears: 5 }, truck: { lo: 25, hi: 78, gears: 4 }, bike: { lo: 54, hi: 190, gears: 6 }, buggy: { lo: 40, hi: 150, gears: 5 }, monster: { lo: 20, hi: 66, gears: 4 } };
 function initAudio() {
   if (!audio.on) return;
-  if (audio.ctx) { if (audio.ctx.state === 'suspended') audio.ctx.resume(); return; }
+  // iPad Safari can leave the context "suspended" or "interrupted" (another app, a call, the screen locking)
+  if (audio.ctx) { if (audio.ctx.state !== 'running') audio.ctx.resume().catch(() => {}); return; }
+  // Play through the speaker even when the iPad or iPhone is set to silent
+  try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch (e) { /* older Safari */ }
   const AC = window.AudioContext || window.webkitAudioContext;
   if (!AC) return;
   let ctx;
@@ -1963,13 +1971,22 @@ function setSound(on) {
 }
 soundSel.value = audio.on ? 'on' : 'off';
 soundSel.addEventListener('change', () => setSound(soundSel.value === 'on'));
-const unlockAudio = () => initAudio();
-addEventListener('pointerdown', unlockAudio, true);
-addEventListener('keydown', unlockAudio, true);
+// Safari only starts sound inside a tap or key press, and on iPad it counts the end of a tap, so listen to all of them
+const unlockAudio = () => { initAudio(); syncSoundBtn(); };
+for (const ev of ['pointerdown', 'pointerup', 'touchend', 'click', 'keydown']) addEventListener(ev, unlockAudio, true);
 document.addEventListener('visibilitychange', () => {
   if (!audio.ctx) return;
-  if (document.hidden) audio.ctx.suspend(); else if (audio.on) audio.ctx.resume();
+  if (document.hidden) audio.ctx.suspend(); else if (audio.on) audio.ctx.resume().catch(() => {});
 });
+addEventListener('pageshow', () => { if (audio.ctx && audio.on) audio.ctx.resume().catch(() => {}); });
+// When the browser has paused sound and only a tap can restart it (e.g. playing with a controller), show a button for that
+const soundBtn = document.getElementById('soundBtn');
+function syncSoundBtn() {
+  const stuck = audio.on && (!audio.ctx || audio.ctx.state !== 'running');
+  soundBtn.hidden = !stuck;
+}
+soundBtn.addEventListener('click', e => { initAudio(); setTimeout(syncSoundBtn, 150); e.currentTarget.blur(); });
+setInterval(() => { if (audio.ctx && audio.on && audio.ctx.state !== 'running') audio.ctx.resume().then(syncSoundBtn, syncSoundBtn); else syncSoundBtn(); }, 1500);
 
 // ---------- Tilt steering (only where the browser allows motion sensors) ----------
 const tilt = { on: false, ref: null, steer: 0, pedal: 0, got: false };
@@ -2538,6 +2555,7 @@ function pollGamepad() {
   pad.brake = Math.max(btn(6).value, btn(1).pressed ? 1 : 0, btn(13).pressed ? 1 : 0, ay > 0 ? fwd : 0);
   pad.hand = btn(5).pressed;
   const edge = i => btn(i).pressed && !pad.prev[i];
+  if (audio.on && audio.ctx && audio.ctx.state !== 'running' && gp.buttons.some((b, i) => b.pressed && !pad.prev[i])) audio.ctx.resume().catch(() => {});
   const dlg = !pinEl.hidden ? pinEl : !timeupEl.hidden ? timeupEl : !loginEl.hidden ? loginEl : !quizEl.hidden ? quizEl : !shopEl.hidden ? shopEl : !parentEl.hidden ? parentEl : !$('settings').hidden ? $('settings') : !menuBody.hidden ? $('menu') : null;
   if (dlg) { padDialog(dlg, edge); pad.prev = gp.buttons.map(b => b.pressed); pad.steer = pad.throttle = pad.brake = 0; return; }
   // Right stick looks around (standard layout only; elsewhere axes 2 and 3 can be triggers)

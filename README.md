@@ -15,7 +15,7 @@ Twelve gem houses hide around the valley. Stop at a door to get a question (read
 
 Each player logs in with a name, password, age and grade, and the grade sets the starting difficulty. The "Who's playing?" list shows every time the game opens. Saves stay on the device and the web address they were made on, so always open the game from the same link (and not in private browsing). A parent can reset a forgotten password with the parent PIN.
 
-Buying anything takes a second tap, and paint colors you already bought are free to switch back to. The Parent corner lists recent points earned and spent. A permanent home house with a 🏠 sign stands at the start and can be seen from anywhere in the valley. The 🔊 button at the top turns sound on and off.
+Buying anything takes a second tap, and paint colors you already bought are free to switch back to. The Parent corner lists recent points earned and spent. The log cabin and red garage from the start also stand in the valley, with a 🏠 sign you can see from anywhere. Stop in front of the garage after a ride to hop off and walk around home. The 🔊 button at the top turns sound on and off; turning it off and on again always restarts the sound.
 
 Settings → Parent corner is behind a 4-digit parent PIN. It sets daily limits (10 minutes riding and 30 minutes learning by default), a chore checklist where each tick adds 10 minutes of riding, the answer timer, read-aloud and free play, and shows what needs practice. When riding time runs out, practice questions continue until learning time is used up.
 

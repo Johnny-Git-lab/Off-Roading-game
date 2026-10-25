@@ -1001,8 +1001,9 @@ function addBuilding(x, z, w, d, h, wallColor, roofColor, roofH, opts = {}) {
   scene.add(shade(grp));
   boxes.push({ x, z, hw: w / 2 + 0.3, hd: d / 2 + 0.3 });
 }
-// Home: a house right behind the start, with a sign and light beam you can see from anywhere in the valley
-addBuilding(0, -13, 10, 7, 4.2, 0xf3e3c3, 0xb5452f, 3.6, { frontWindows: [-3, 3], sideWindows: [0], chimney: true, door: 0x2f6b3a });
+// Home: the same log cabin and red garage you start at stand right behind the start (built with the home yard below)
+const HOME_OFF = [-9, -6];
+boxes.push({ x: -20.1, z: -12.9, hw: 6.1, hd: 5.5 }, { x: 0, z: -13, hw: 5.4, hd: 4.9 });
 addBuilding(-68, 32, 13, 9, 5.5, 0xe8dfca, 0x4f555c, 4, { frontWindows: [-4, 4], sideWindows: [-2, 2], chimney: true });
 addBuilding(-105, -48, 16, 22, 8, 0x9c3428, 0x37322f, 6, { trim: 0xf0ebe0, doorW: 5, doorH: 5, door: 0x7a2a20, sideWindows: [-6, 0, 6] });
 addBuilding(-40, -168, 8, 7, 4, 0x7d5e3e, 0x2f4436, 3.4, { frontWindows: [2.4], chimney: true, trim: 0xd8cdb4 });
@@ -1490,6 +1491,7 @@ const cam = { yaw: 0, pitch: 0.28, heading: 0, lastDrag: -10, snap: true, pos: n
 function placeCar(x, z, heading) {
   Object.assign(car, { x, z, vx: 0, vz: 0, vy: 0, heading, steer: 0, pitch: 0, roll: 0, lean: 0, grounded: true, surge: 0, bounce: 0, bounceV: 0, crashT: 0 });
   car.y = groundHeight(x, z);
+  if (Math.hypot(x, z) < 5) leftHome = false;
   cam.heading = heading; cam.yaw = 0; cam.snap = true;
 }
 function selectVehicle(type) {
@@ -1902,10 +1904,26 @@ function updatePuffs(dt) {
 // ---------- Sound (Web Audio, synthesized) ----------
 const audio = { ctx: null, on: store.get('bcr-sound-v1', true), rpm: 0 };
 const ENGINE = { atv: { lo: 34, hi: 118, gears: 5 }, truck: { lo: 25, hi: 78, gears: 4 }, bike: { lo: 54, hi: 190, gears: 6 }, buggy: { lo: 40, hi: 150, gears: 5 }, monster: { lo: 20, hi: 66, gears: 4 } };
-function initAudio() {
+// Ask a paused sound engine to restart; if it still isn't playing a moment later, the next tap builds a new one
+function tryResume() {
+  const ctx = audio.ctx;
+  if (!ctx || ctx.state === 'running') return;
+  ctx.resume().catch(() => {});
+  setTimeout(() => { if (audio.ctx === ctx && audio.on && ctx.state !== 'running') audio.stale = true; if (typeof syncSoundBtn === 'function') syncSoundBtn(); }, 700);
+}
+function initAudio(fresh) {
   if (!audio.on) return;
-  // iPad Safari can leave the context "suspended" or "interrupted" (another app, a call, the screen locking)
-  if (audio.ctx) { if (audio.ctx.state !== 'running') audio.ctx.resume().catch(() => {}); return; }
+  // iPad Safari can leave the sound engine "suspended" or "interrupted" (another app, the screen locking, reading a
+  // question aloud), and sometimes it never comes back. Inside a tap we may build a new one, so do that when it's stuck.
+  if (audio.ctx) {
+    const st = audio.ctx.state;
+    const ok = !fresh && !audio.stale && !audio.rebuild;
+    if (ok && st === 'running') return;
+    if (ok && st === 'suspended') { tryResume(); return; }
+    try { audio.ctx.close(); } catch (e) { /* already closed */ }
+    audio.ctx = null;
+  }
+  audio.stale = audio.rebuild = false;
   // Play through the speaker even when the iPad or iPhone is set to silent
   try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch (e) { /* older Safari */ }
   const AC = window.AudioContext || window.webkitAudioContext;
@@ -1994,7 +2012,8 @@ const soundSel = document.getElementById('soundSel');
 function setSound(on) {
   audio.on = on; store.set('bcr-sound-v1', on);
   soundSel.value = on ? 'on' : 'off';
-  if (on) initAudio(); else if (audio.ctx) audio.ctx.suspend();
+  // Turning sound on always starts a brand-new sound engine, so the speaker button can fix any stuck sound
+  if (on) initAudio(true); else if (audio.ctx) audio.ctx.suspend();
   if (typeof syncSoundBtn === 'function') syncSoundBtn();
 }
 soundSel.value = audio.on ? 'on' : 'off';
@@ -2002,20 +2021,20 @@ soundSel.addEventListener('change', () => setSound(soundSel.value === 'on'));
 // Safari only starts sound inside a tap or key press, and on iPad it counts the end of a tap, so listen to all of them
 const unlockAudio = e => {
   // Remember whether the speaker button was asking for a tap before this tap starts the sound
-  if ((e.type === 'pointerdown' || e.type === 'keydown') && e.target && e.target.closest && e.target.closest('#soundBtn')) soundBtn.dataset.wasStuck = audio.on && (!audio.ctx || audio.ctx.state !== 'running') ? '1' : '';
+  if ((e.type === 'pointerdown' || e.type === 'keydown') && e.target && e.target.closest && e.target.closest('#soundBtn')) soundBtn.dataset.wasStuck = audio.on && (!audio.ctx || audio.ctx.state !== 'running' || audio.stale) ? '1' : '';
   initAudio(); syncSoundBtn();
 };
 for (const ev of ['pointerdown', 'pointerup', 'touchend', 'click', 'keydown']) addEventListener(ev, unlockAudio, true);
 document.addEventListener('visibilitychange', () => {
   if (!audio.ctx) return;
-  if (document.hidden) audio.ctx.suspend(); else if (audio.on) audio.ctx.resume().catch(() => {});
+  if (document.hidden) audio.ctx.suspend(); else if (audio.on) tryResume();
 });
-addEventListener('pageshow', () => { if (audio.ctx && audio.on) audio.ctx.resume().catch(() => {}); });
+addEventListener('pageshow', () => { if (audio.on) tryResume(); });
 // When the browser has paused sound and only a tap can restart it (e.g. playing with a controller), show a button for that
 const soundBtn = document.getElementById('soundBtn');
 // The speaker button: tap to mute or unmute; it blinks when Safari has paused sound and a tap will bring it back
 function syncSoundBtn() {
-  const stuck = audio.on && (!audio.ctx || audio.ctx.state !== 'running');
+  const stuck = audio.on && (!audio.ctx || audio.ctx.state !== 'running' || audio.stale);
   soundBtn.textContent = audio.on && !stuck ? '🔊' : '🔇';
   soundBtn.classList.toggle('off', !audio.on);
   soundBtn.classList.toggle('stuck', stuck);
@@ -2025,12 +2044,12 @@ soundBtn.addEventListener('click', e => {
   e.stopPropagation();
   const stuck = soundBtn.dataset.wasStuck === '1' || (audio.on && (!audio.ctx || audio.ctx.state !== 'running'));
   soundBtn.dataset.wasStuck = '';
-  if (stuck) { initAudio(); toast('🔊 Sound on', 1.2); }
+  if (stuck) { initAudio(true); toast('🔊 Sound on', 1.2); }
   else { setSound(!audio.on); toast(audio.on ? '🔊 Sound on' : '🔇 Sound off', 1.2); }
   setTimeout(syncSoundBtn, 150); e.currentTarget.blur();
 });
 syncSoundBtn();
-setInterval(() => { if (audio.ctx && audio.on && audio.ctx.state !== 'running') audio.ctx.resume().then(syncSoundBtn, syncSoundBtn); else syncSoundBtn(); }, 1500);
+setInterval(() => { if (audio.ctx && audio.on && audio.ctx.state !== 'running') tryResume(); syncSoundBtn(); }, 1500);
 
 // ---------- Tilt steering (only where the browser allows motion sensors) ----------
 const tilt = { on: false, ref: null, steer: 0, pedal: 0, got: false };
@@ -2891,7 +2910,10 @@ function speak(text) {
   if (!learn.voice || !window.speechSynthesis) return;
   try {
     speechSynthesis.cancel();
-    const u = new SpeechSynthesisUtterance(text); u.rate = 0.9; u.pitch = 1.05; speechSynthesis.speak(u);
+    const u = new SpeechSynthesisUtterance(text); u.rate = 0.9; u.pitch = 1.05;
+    // On iPad, reading aloud can silently stop the game's sound; start a fresh sound engine at the next tap
+    if (/iP(ad|hone|od)|Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 0) u.onend = u.onerror = () => { audio.rebuild = true; };
+    speechSynthesis.speak(u);
   } catch (e) { /* speech is optional */ }
 }
 
@@ -2970,7 +2992,7 @@ function nearestHouse(kind) {
   }
   return best ? [best, bd] : [null, Infinity];
 }
-let gemTarget = null, knockToast = 0;
+let gemTarget = null, knockToast = 0, leftHome = false;
 
 // ---- Questions ----
 const WORDS = {
@@ -3378,7 +3400,9 @@ function updateLearn(dt, inp) {
     if (prog.fuel === 0) { toast('Out of gas! Find a ⛽ fuel house', 3.5); gemTarget = 'fuel'; updateGemBar(true); boost.emptyToast = simTime; }
   } else if (simTime - boost.emptyToast > 25) { boost.emptyToast = simTime; toast('Running on fumes · follow the arrow to ⛽', 3); }
   // Following the home arrow: stopping at the sign walks you back into the garage
-  if (gemTarget === 'home' && homeDist() < 7 && speed < 4 && car.crashT <= 0) { gemTarget = null; goHome(); return; }
+  // Stopping in front of the garage after a ride goes back inside (with or without the arrow on)
+  if (homeDist() > 40) leftHome = true;
+  if ((gemTarget === 'home' || leftHome) && homeDist() < 9 && speed < 4 && car.crashT <= 0) { gemTarget = null; leftHome = false; goHome(); return; }
   // Knock on a house door when you stop next to it
   for (const h of houses) {
     if (!h.ready) {
@@ -3416,7 +3440,7 @@ const fuelRangeKm = () => prog.fuel / ((0.003 + 0.05 * 0.8) * (prog.powers.saver
 gemBar.addEventListener('click', e => {
   const b = e.target.closest('button'); if (!b) return;
   gemTarget = gemTarget === b.dataset.k ? null : b.dataset.k;
-  if (gemTarget === 'home') toast(`Follow the arrow home · ${(homeDist() / 1000).toFixed(1)} km · stop in front of the house`);
+  if (gemTarget === 'home') toast(`Follow the arrow home · ${(homeDist() / 1000).toFixed(1)} km · stop in front of the red garage`);
   else if (gemTarget) { const [h, d] = nearestHouse(gemTarget); toast(h ? `Follow the arrow to the ${KINDS[gemTarget].house.toLowerCase()} · ${(d / 1000).toFixed(1)} km` : 'None nearby right now'); }
   updateGemBar(true); b.blur();
 });
@@ -3818,6 +3842,7 @@ const TURNTABLE = [-11, 2.4], PICK_CAM = [-11, 1.6, 6.9];
   for (const [x, z, sc] of [[-28, -18, 1], [-24, 24, 0.9], [26, 18, 1.1], [28, -20, 0.95], [-30, 6, 0.8]]) { pine(x, z, sc); solid(x - 0.5, x + 0.5, z - 0.5, z + 0.5); }
 
   // Log cabin with a porch
+  const cab0 = S.children.length;
   const logTex = (() => {
     const c = document.createElement('canvas'); c.width = 64; c.height = 64; const g = c.getContext('2d');
     for (let k = 0; k < 4; k++) { const gr = g.createLinearGradient(0, k * 16, 0, k * 16 + 16); gr.addColorStop(0, '#5e3b1f'); gr.addColorStop(0.3, '#9a673b'); gr.addColorStop(0.7, '#8a5a32'); gr.addColorStop(1, '#4a2e17'); g.fillStyle = gr; g.fillRect(0, k * 16, 64, 16); }
@@ -3849,6 +3874,7 @@ const TURNTABLE = [-11, 2.4], PICK_CAM = [-11, 1.6, 6.9];
   box(S, 1.6, 0.4, 0.5, deck, HX - 3.4, 0.55, HZ + HD / 2 + 0.4);
   const lamp = new THREE.PointLight(0xffd59a, 0.5, 9); lamp.position.set(HX + 1.8, 2.6, HZ + HD / 2 + 0.8); S.add(lamp);
   solid(HX - HW / 2 - 0.9, HX + HW / 2 + 0.2, HZ - HD / 2 - 0.2, HZ + HD / 2 + 0.2);
+  const cab1 = S.children.length;
   // Mailbox and a picnic table
   box(S, 0.1, 1.1, 0.1, deck, 4.2, 0.55, 30); box(S, 0.3, 0.3, 0.5, std(0x2c5a86, 0.5, 0.4), 4.2, 1.2, 30);
   box(S, 2, 0.08, 0.8, deck, -18, 0.75, 12); for (const sd of [-1, 1]) box(S, 2, 0.06, 0.3, deck, -18, 0.45, 12 + sd * 0.65);
@@ -3861,6 +3887,7 @@ const TURNTABLE = [-11, 2.4], PICK_CAM = [-11, 1.6, 6.9];
   shade(tt);
 
   // Garage with the three vehicles
+  const gar0 = S.children.length;
   const GX = 9, GZ = -7, GW = 10, GD = 9, GH = 3.6, red = std(0x8e2f24, 0.8), inner = std(0xd8d2c4, 0.9);
   box(S, GW, 0.06, GD, std(0x7f7c75, 0.9), GX, 0.03, GZ);
   const wall = (w, d, x, z, h = GH, y = GH / 2) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), [red, red, red, red, red, red]); m.position.set(x, y, z); add(m); return m; };
@@ -3888,6 +3915,13 @@ const TURNTABLE = [-11, 2.4], PICK_CAM = [-11, 1.6, 6.9];
   solid(GX - GW / 2, GX - GW / 2 + 0.95, GZ + GD / 2 - 0.15, GZ + GD / 2 + 0.15);
   solid(GX + GW / 2 - 0.95, GX + GW / 2, GZ + GD / 2 - 0.15, GZ + GD / 2 + 0.15);
   solid(GX + GW / 2 - 1.1, GX + GW / 2, GZ - GD / 2, GZ - GD / 2 + 2.4);
+  // The same cabin and garage stand in the valley behind the start, so driving home looks like home
+  {
+    const g = new THREE.Group();
+    for (const o of [...S.children.slice(cab0, cab1), ...S.children.slice(gar0)]) if (o.isMesh || o.isGroup) g.add(o.clone());
+    g.position.set(HOME_OFF[0], groundHeight(0, -10) - 0.05, HOME_OFF[1]);
+    scene.add(g);
+  }
   // Parked vehicles, empty, with a hanging sign over each
   const signTex = (text, color) => {
     const c = document.createElement('canvas'); c.width = 256; c.height = 96; const g = c.getContext('2d');

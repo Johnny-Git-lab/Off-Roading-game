@@ -17,7 +17,7 @@ Each player logs in with a name, password, age and grade, and the grade sets the
 
 Buying anything takes a second tap, and paint colors you already bought are free to switch back to. The Parent corner lists recent points earned and spent. The log cabin and red garage from the start also stand in the valley, with a 🏠 sign you can see from anywhere. Stop in front of the garage after a ride to hop off and walk around home. The 🔊 button at the top turns sound on and off; turning it off and on again always restarts the sound.
 
-Settings → Parent corner is behind a 4-digit parent PIN. It sets daily limits (10 minutes riding and 30 minutes learning by default), a chore checklist where each tick adds 10 minutes of riding, the answer timer, read-aloud and free play, and shows what needs practice. When riding time runs out, practice questions continue until learning time is used up.
+Settings → Parent corner is behind a 4-digit parent PIN. Each day starts with 30 minutes of normal riding, where every gem house prize takes questions. He never rides more than 10 minutes without answering a question (one pops up if he skips the houses). After the 30 minutes, a 5-question school session unlocks 10 more minutes, again and again. Each chore a parent ticks adds 10 minutes. All of these numbers can be changed in the Parent corner, along with the answer timer, read-aloud and free play, and it shows what needs practice.
 
 ## Controls
 

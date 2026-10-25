@@ -634,10 +634,14 @@ body.pad .ride-btn::after { content: " · X"; opacity: 0.6; }
   <select id="p-age"></select>
   <label class="label" for="p-pass">Player password</label>
   <form class="newp" id="p-passForm"><input id="p-pass" maxlength="12" autocomplete="off" aria-label="New player password"><button>Save</button></form>
-  <label class="label" for="p-ride">Riding time per day</label>
-  <select id="p-ride"><option value="10">10 minutes</option><option value="15">15 minutes</option><option value="20">20 minutes</option><option value="30">30 minutes</option><option value="45">45 minutes</option><option value="60">1 hour</option><option value="0">No limit</option></select>
-  <label class="label" for="p-learnMin">Learning time per day</label>
-  <select id="p-learnMin"><option value="15">15 minutes</option><option value="30">30 minutes</option><option value="45">45 minutes</option><option value="60">1 hour</option><option value="0">No limit</option></select>
+  <label class="label" for="p-normal">Normal riding per day (prizes need questions)</label>
+  <select id="p-normal"><option value="15">15 minutes</option><option value="20">20 minutes</option><option value="30">30 minutes</option><option value="45">45 minutes</option><option value="60">1 hour</option><option value="0">No limits or school time</option></select>
+  <label class="label" for="p-gap">Longest riding without a question</label>
+  <select id="p-gap"><option value="5">5 minutes</option><option value="10">10 minutes</option><option value="15">15 minutes</option><option value="0">No limit</option></select>
+  <label class="label" for="p-qs">After that: school time, questions per session</label>
+  <select id="p-qs"><option value="3">3 questions</option><option value="5">5 questions</option><option value="8">8 questions</option></select>
+  <label class="label" for="p-extra">Riding earned per school session</label>
+  <select id="p-extra"><option value="5">5 minutes</option><option value="10">10 minutes</option><option value="15">15 minutes</option></select>
   <span class="label">Chores done today · +10 min riding each</span>
   <div class="chores" id="p-chores"></div>
   <form class="newp" id="p-choreForm"><input id="p-choreName" maxlength="28" placeholder="Add another chore" autocomplete="off" aria-label="New chore"><button>Add</button></form>
@@ -2846,7 +2850,7 @@ const prog = Object.assign({
   day: { date: '', ride: 0, learn: 0, done: [] }
 }, store.get('bcr-prog-v1', {}));
 const CHORES = ['Mowed the lawn', 'Swept the floor', 'Played with other kids', 'Made the bed', 'Cleaned my room', 'Helped with dishes', 'Fed the pets', 'Finished homework'];
-const learn = Object.assign({ level: 'easy', topics: 'both', timer: 30, voice: true, freeVehicles: false, adjust: 0, limits: { ride: 10, learn: 30 }, chores: CHORES.slice() }, store.get('bcr-learn-v1', {}));
+const learn = Object.assign({ level: 'easy', topics: 'both', timer: 30, voice: true, freeVehicles: false, adjust: 0, limits: { ride: 10, learn: 30 }, plan: { normal: 30, gap: 10, qs: 5, extra: 10 }, chores: CHORES.slice() }, store.get('bcr-learn-v1', {}));
 // Older saves picked "math", "spell" or "both"; turn that into the subject list
 if (!learn.subjects) learn.subjects = learn.topics === 'math' ? ['math'] : learn.topics === 'spell' ? ['write'] : ['math', 'write'];
 learn.subjects = [...new Set(learn.subjects.map(k => k === 'arith' ? 'math' : k))];
@@ -2864,8 +2868,14 @@ function playDay() {
   if (prog.day.date !== d) prog.day = { date: d, ride: 0, learn: 0, done: [] };
   return prog.day;
 }
-const rideLeft = () => learn.limits.ride ? (learn.limits.ride + 10 * playDay().done.length) * 60 - playDay().ride : Infinity;
-const learnLeft = () => learn.limits.learn ? learn.limits.learn * 60 - playDay().learn : Infinity;
+// Daily plan: normal riding (prizes at gem houses need questions), never too long without a question,
+// then school sessions of a few questions, each unlocking more riding. Chores add 10 minutes each.
+const rideAllowed = () => (learn.plan.normal + 10 * playDay().done.length + (playDay().extra || 0)) * 60;
+const untilSchool = () => learn.plan.normal ? rideAllowed() - playDay().ride : Infinity;
+const untilQuestion = () => learn.plan.normal && learn.plan.gap ? learn.plan.gap * 60 - (playDay().sinceQ || 0) : Infinity;
+const rideLeft = () => Math.min(untilSchool(), untilQuestion());
+const stopKind = () => untilSchool() <= untilQuestion() ? 'school' : 'question';
+const learnLeft = () => Infinity;
 const mins = sec => sec < 60 ? `${Math.max(0, Math.ceil(sec))} s` : `${Math.ceil(sec / 60)} min`;
 // Every save notes what changed in coins, gems and stars, so a parent can see where points went
 let savedPts = { coins: prog.coins, gems: prog.gems, stars: prog.stars }, ptsWhy = '';
@@ -3182,7 +3192,6 @@ function makeJob(kind) {
 const quizEl = $('quiz');
 const quiz = { open: false, house: null, step: 'door', q: null, input: '', filled: 0, wrong: 0, t0: 0, late: false, job: null, pts: 0 };
 function openQuiz(h) {
-  if (learnLeft() <= 0) { h.wait = true; toast('Learning time is done for today', 2.5); return; }
   Object.assign(quiz, { open: true, house: h, step: 'door', q: makeQuestion(), input: '', filled: 0, wrong: 0, used: [], t0: performance.now() / 1000, late: false });
   Object.assign(car, { vx: 0, vz: 0 });
   quizEl.hidden = false;
@@ -3261,6 +3270,8 @@ function doorSolved() {
   if (!quiz.late && quiz.wrong === 0) { prog.streak++; prog.bestStreak = Math.max(prog.bestStreak, prog.streak); } else prog.streak = 0;
   if (secs < 5 && quiz.wrong === 0) earnBadge('speedy');
   sfx('gate');
+  playDay().sinceQ = 0; limitWarn = 0;
+  if (quiz.house.school) { quiz.step = 'reward'; quizFeedback('Right!', true); setTimeout(() => { if (quiz.open && quiz.step === 'reward') renderQuiz(); }, 700); return; }
   quiz.step = 'job'; quiz.job = makeJob(quiz.house.kind);
   quizFeedback('The door is open!', true);
   setTimeout(() => { if (quiz.open && quiz.step === 'job') { renderQuiz(); speak(quiz.job.say); } }, 700);
@@ -3333,6 +3344,7 @@ function collectReward() {
   closeQuiz();
   sfx('coin');
   toast(`+${pts} ${KINDS[kind].icon} ${KINDS[kind].name}`, 2.2);
+  if (h.school) schoolNext();
 }
 quizEl.addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; if (b.id === 'qSpeak') { speak(quiz.step === 'job' ? quiz.job.say : quiz.q.say); return; } if (b.id === 'qClose') { leaveHouse(); return; } quizPress(b); });
 // Leaving without answering: the house waits until you drive away and come back
@@ -3474,7 +3486,7 @@ function updateGemBar(force) {
   $('gasKm').textContent = prog.fuel > 0 ? `${fuelRangeKm().toFixed(1)} km left` : 'Empty!';
   $('gasBar').classList.toggle('low', f < 0.25);
   const tl = rideLeft();
-  $('timeLeft').textContent = tl === Infinity ? '' : `⏱ ${mins(tl)}`;
+  $('timeLeft').textContent = tl === Infinity ? '' : `${stopKind() === 'school' ? '📚' : '❓'} ${mins(tl)}`;
   $('timeLeft').classList.toggle('low', tl < 120);
   $('fuelLvl').style.width = (prog.fuel / tankSize() * 100) + '%';
   document.body.classList.toggle('has-turbo', !!prog.powers.turbo);
@@ -3604,7 +3616,7 @@ function renderParent() {
   const when = t => new Date(t).toLocaleString([], { weekday: 'short', hour: 'numeric', minute: '2-digit' });
   const amt = (n, ic) => n ? `<b>${n > 0 ? '+' : '−'}${Math.abs(n)}</b> ${ic}` : '';
   $('p-log').innerHTML = (prog.log || []).slice(0, 12).map(l => `<p>${when(l.t)} · ${[amt(l.coins, '🪙'), amt(l.gems, '💎'), amt(l.stars, '⭐')].filter(Boolean).join(' ')}${l.why ? ` · ${l.why}` : ''}</p>`).join('') || '<p>Nothing yet.</p>';
-  $('p-ride').value = String(learn.limits.ride); $('p-learnMin').value = String(learn.limits.learn);
+  for (const k of ['normal', 'gap', 'qs', 'extra']) $('p-' + k).value = String(learn.plan[k]);
   const d = playDay();
   $('p-chores').innerHTML = '';
   for (const c of learn.chores) {
@@ -3614,8 +3626,10 @@ function renderParent() {
     b.addEventListener('click', () => { d.done = d.done.includes(c) ? d.done.filter(x => x !== c) : [...d.done, c]; saveProg(); renderParent(); });
     $('p-chores').append(b);
   }
-  const rl = learn.limits.ride ? learn.limits.ride + 10 * d.done.length : 0;
-  $('p-today').textContent = `Today: riding ${Math.floor(d.ride / 60)} of ${rl ? rl + ' min' : 'unlimited'}${d.done.length ? ` (includes +${10 * d.done.length} for chores)` : ''} · learning ${Math.floor(d.learn / 60)} of ${learn.limits.learn ? learn.limits.learn + ' min' : 'unlimited'}`;
+  const pl = learn.plan;
+  $('p-today').textContent = pl.normal
+    ? `Today: ${Math.floor(d.ride / 60)} min riding of ${Math.round(rideAllowed() / 60)} unlocked (${pl.normal} normal${d.done.length ? ` + ${10 * d.done.length} chores` : ''}${d.extra ? ` + ${d.extra} from school (${d.sessions || 0} session${d.sessions === 1 ? "" : "s"})` : ''}) · ${Math.floor(d.learn / 60)} min of questions`
+    : `Today: ${Math.floor(d.ride / 60)} min riding, no limits · ${Math.floor(d.learn / 60)} min of questions`;
   const line = (st, label) => {
     const tot = st.right + st.late, tries = tot + st.wrong;
     const tricky = Object.entries(st.items).filter(([, v]) => v.w > 0).sort((a, b) => b[1].w - a[1].w).slice(0, 6).map(([k, v]) => `${k.replace('-', '−')} <small>(${v.w}✗ ${v.r}✓)</small>`);
@@ -3625,8 +3639,7 @@ function renderParent() {
 }
 function openParent() { $('settings').hidden = true; parentEl.hidden = false; renderParent(); }
 $('parentBtn').addEventListener('click', () => { $('settings').hidden = true; askPin(openParent); });
-$('p-ride').addEventListener('change', e => { learn.limits.ride = +e.target.value; store.set('bcr-learn-v1', learn); renderParent(); });
-$('p-learnMin').addEventListener('change', e => { learn.limits.learn = +e.target.value; store.set('bcr-learn-v1', learn); renderParent(); });
+for (const k of ['normal', 'gap', 'qs', 'extra']) $('p-' + k).addEventListener('change', e => { learn.plan[k] = +e.target.value; store.set('bcr-learn-v1', learn); renderParent(); });
 $('p-grade').addEventListener('change', e => { if (!player) return; player.grade = e.target.value; savePlayer(); applyLevel(); store.set('bcr-learn-v1', learn); });
 $('p-age').addEventListener('change', e => { if (!player) return; player.age = +e.target.value; savePlayer(); });
 $('p-passForm').addEventListener('submit', e => {
@@ -4365,31 +4378,51 @@ function trackTime(dt, learning) {
   const d = playDay();
   if (learning) d.learn += dt; else d.ride += dt;
   if ((daySave += dt) > 5) { daySave = 0; saveProg(); }
-  if (!learning && learn.limits.ride) {
+  if (!learning) {
+    d.sinceQ = (d.sinceQ || 0) + dt;
     const left = rideLeft();
-    if (left < 120 && limitWarn < 1) { limitWarn = 1; toast('2 minutes of riding left today', 2.5); }
-    if (left < 60 && limitWarn < 2) { limitWarn = 2; toast('1 minute of riding left!', 2.5); }
+    if (left === Infinity) return;
+    const what = stopKind() === 'school' ? 'school time' : 'question time';
+    if (left < 120 && limitWarn < 1) { limitWarn = 1; toast(`2 minutes until ${what}${what === 'question time' ? ' · open a gem house to keep going' : ''}`, 3); }
+    if (left < 60 && limitWarn < 2) { limitWarn = 2; toast(`1 minute until ${what}!`, 2.5); }
     if (left > 120) limitWarn = 0;
     if (left <= 0) openTimeUp();
   }
 }
+// A school session in progress: questions left and what it unlocks
+let school = null;
 function openTimeUp() {
-  Object.assign(car, { vx: 0, vz: 0 }); saveProg();
-  const ll = learnLeft(), canLearn = ll > 0;
-  $('tuPic').textContent = canLearn ? '🏁' : '🌙';
-  $('tuTitle').textContent = canLearn ? 'Riding time is done for today' : 'All done for today!';
-  $('tuText').textContent = canLearn
-    ? `Great riding! You can still earn points with practice questions${ll === Infinity ? '' : ` · ${mins(ll)} of learning time left`}. A parent can add riding time for chores.`
-    : 'Great work today. Come back tomorrow for more riding and gem houses. A parent can add riding time for chores.';
-  $('tuLearn').hidden = !canLearn;
+  Object.assign(car, { vx: 0, vz: 0 });
+  if (school && school.between) return;
+  saveProg();
+  const kind = stopKind(), pl = learn.plan, n = school && school.kind === kind ? school.left : kind === 'school' ? pl.qs : 1;
+  $('tuPic').textContent = kind === 'school' ? '📚' : '❓';
+  $('tuTitle').textContent = kind === 'school' ? 'School time!' : 'Question time!';
+  $('tuText').textContent = kind === 'school'
+    ? `You rode your ${pl.normal} minutes today. Answer ${n} question${n > 1 ? 's' : ''} to unlock ${pl.extra} more minutes of riding. A parent can also add time for chores.`
+    : `You rode ${pl.gap} minutes without a question. Answer one to keep riding.`;
+  $('tuLearn').textContent = kind === 'school' ? `📚 Start · ${n} question${n > 1 ? 's' : ''}` : '❓ Answer a question';
+  $('tuLearn').hidden = false;
   timeupEl.hidden = false;
-  setTimeout(() => (canLearn ? $('tuLearn') : $('tuHome')).focus(), 50);
+  setTimeout(() => $('tuLearn').focus(), 50);
 }
-// Practice without driving: a gem house challenge that comes to you
+function schoolQuiz() {
+  openQuiz({ kind: pick(KIND_KEYS), x: car.x, z: car.z, practice: true, school: true, ready: true, icon: {}, beam: {}, roof: {} });
+}
+function schoolNext() {
+  if (!school) return;
+  if (--school.left > 0) { toast(`${school.left} more to go!`, 1.6); school.between = true; setTimeout(() => { if (!school) return; school.between = false; if (!quiz.open) { timeupEl.hidden = true; schoolQuiz(); } }, 900); return; }
+  const d = playDay();
+  if (school.kind === 'school') { d.extra = (d.extra || 0) + learn.plan.extra; d.sessions = (d.sessions || 0) + 1; toast(`School done! +${learn.plan.extra} minutes of riding 🏍️`, 3); }
+  else toast('Keep riding! 🏍️', 2);
+  school = null; limitWarn = 0; saveProg();
+}
+// Questions come to you; leaving one keeps your place in the session
 $('tuLearn').addEventListener('click', () => {
   timeupEl.hidden = true;
-  const kind = pick(KIND_KEYS);
-  openQuiz({ kind, x: car.x, z: car.z, practice: true, ready: true, icon: {}, beam: {}, roof: {} });
+  const kind = stopKind();
+  if (!school || school.kind !== kind) school = { kind, left: kind === 'school' ? learn.plan.qs : 1 };
+  schoolQuiz();
 });
 $('tuHome').addEventListener('click', () => { timeupEl.hidden = true; goHome(); });
 $('tuParent').addEventListener('click', () => { timeupEl.hidden = true; askPin(openParent); });

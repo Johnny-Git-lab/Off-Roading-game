@@ -372,6 +372,11 @@ body.pad .ride-btn::after { content: " · X"; opacity: 0.6; }
 .newp input { flex: 1; min-width: 0; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--hud-line); background: #1b221d; color: var(--hud-fg); font: 600 17px var(--font-body); -webkit-user-select: text; user-select: text; }
 .newp button { padding: 8px 16px; border-radius: 8px; border: 0; background: var(--accent); color: #1c1608; cursor: pointer; font: 800 16px var(--font-display); text-transform: uppercase; }
 .no-close #loginClose { display: none; }
+.srow .passform { grid-column: 1 / -1; }
+.srow .passform input { flex-basis: 120px; }
+.srow .passform .forgot { background: transparent; border: 1px solid var(--hud-line); color: var(--hud-fg); text-transform: none; font-weight: 700; }
+.srow button.arm, .paints button.arm { outline: 3px solid #fff; outline-offset: 2px; }
+.paints button.own::after { content: '✓'; color: #fff; font: 800 18px var(--font-display); text-shadow: 0 1px 2px #000; }
 @media (max-width: 560px) { .home-title { top: calc(var(--edge) + 58px + env(safe-area-inset-top, 0px)); } }
 /* Gas bar above the speedometer: red when empty, green when full, with how far the tank will go */
 .gauge { flex-wrap: wrap; }
@@ -409,10 +414,13 @@ body.pad .ride-btn::after { content: " · X"; opacity: 0.6; }
 .vehpick .row span.on { background: var(--accent); border-color: var(--accent); color: #1c1608; transform: scale(1.08); }
 .vehpick small { font-size: 12px; color: var(--hud-dim); }
 @media (max-height: 500px) { .vehpick { top: 58%; } .vehpick .row span { padding: 4px 9px; font-size: 14px; } }
-.sound-btn { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(var(--edge) + 8px + env(safe-area-inset-bottom, 0px)); padding: 8px 14px; border-radius: 20px; cursor: pointer; z-index: 3; font: 700 15px var(--font-display); letter-spacing: 0.04em; }
-.picking .sound-btn { bottom: auto; top: calc(var(--edge) + 64px + env(safe-area-inset-top, 0px)); }
-.modal .sound-btn, .menu-open .sound-btn { display: none !important; }
-@media (max-width: 560px) { .sound-btn { bottom: auto; top: calc(var(--edge) + var(--map) + 96px + env(safe-area-inset-top, 0px)); } }
+.sound-toggle { position: fixed; top: calc(var(--edge) + env(safe-area-inset-top, 0px)); right: calc(var(--edge) + 164px + env(safe-area-inset-right, 0px)); width: 42px; height: 42px; border-radius: 50%; cursor: pointer; z-index: 3; font-size: 20px; line-height: 1; padding: 0; }
+.home .sound-toggle { right: calc(var(--edge) + env(safe-area-inset-right, 0px)); }
+.sound-toggle.off { opacity: 0.75; }
+.sound-toggle.stuck { border-color: var(--accent); animation: blink 1s steps(2) infinite; }
+.modal .sound-toggle, .menu-open .sound-toggle { display: none !important; }
+@media (max-height: 500px) { .sound-toggle { right: calc(var(--edge) + 156px + env(safe-area-inset-right, 0px)); width: 38px; height: 38px; font-size: 18px; } }
+@media (orientation: portrait) { body:not(.home) .sound-toggle { right: calc(var(--edge) + env(safe-area-inset-right, 0px)); top: calc(var(--edge) + 66px + env(safe-area-inset-top, 0px)); } }
 /* The open game menu needs the top and right of the screen */
 .menu-open .gembar, .menu-open .pw, .menu-open .horn, .menu-open #pedal { display: none !important; }
 /* Walking always gets the turn and walk sliders, even with tilt steering on */
@@ -571,7 +579,7 @@ body.pad .ride-btn::after { content: " · X"; opacity: 0.6; }
 <button class="ride-btn" id="rideBtn" hidden>Ride</button>
 
 <div class="vehpick panel" id="vehPick" hidden aria-live="polite"></div>
-<button class="sound-btn glass" id="soundBtn" hidden>🔇 Tap for sound</button>
+<button class="sound-toggle glass" id="soundBtn" aria-label="Sound on or off">🔊</button>
 <nav class="gembar" id="gemBar" aria-label="Points and gem houses"></nav>
 <button class="pw glass" id="turboBtn" aria-label="Turbo boost">TURBO</button>
 <button class="pw glass" id="jumpBtn" aria-label="Super jump">JUMP</button>
@@ -597,8 +605,8 @@ body.pad .ride-btn::after { content: " · X"; opacity: 0.6; }
   <div class="q-head"><h2>Who's playing?</h2><span class="q-tools"><button id="loginClose" aria-label="Close">✕</button></span></div>
   <div id="loginList"></div>
   <h3>New player</h3>
-  <form class="newp" id="loginForm"><input id="loginName" maxlength="14" placeholder="Type your name" autocomplete="off" enterkeyhint="go" aria-label="New player name"><select id="loginAge" aria-label="Age"></select><select id="loginGrade" aria-label="Grade"></select><button id="loginAdd">Start</button></form>
-  <p class="snote">Points are saved on this device for each player. Pick your name next time and everything is still there.</p>
+  <form class="newp" id="loginForm"><input id="loginName" maxlength="14" placeholder="Type your name" autocomplete="off" enterkeyhint="next" aria-label="New player name"><input id="loginPass" type="password" maxlength="12" placeholder="Make a password" autocomplete="new-password" enterkeyhint="go" aria-label="Password"><select id="loginAge" aria-label="Age"></select><select id="loginGrade" aria-label="Grade"></select><button id="loginAdd">Start</button></form>
+  <p class="snote">Points are saved on this device for each player. Pick your name and type your password next time and everything is still there. Forgot it? A parent can reset it.</p>
 </div>
 
 <div class="shop panel timeup" id="timeup" role="dialog" aria-label="Time is up" hidden>
@@ -624,6 +632,8 @@ body.pad .ride-btn::after { content: " · X"; opacity: 0.6; }
   <select id="p-grade"></select>
   <label class="label" for="p-age">Age</label>
   <select id="p-age"></select>
+  <label class="label" for="p-pass">Player password</label>
+  <form class="newp" id="p-passForm"><input id="p-pass" maxlength="12" autocomplete="off" aria-label="New player password"><button>Save</button></form>
   <label class="label" for="p-ride">Riding time per day</label>
   <select id="p-ride"><option value="10">10 minutes</option><option value="15">15 minutes</option><option value="20">20 minutes</option><option value="30">30 minutes</option><option value="45">45 minutes</option><option value="60">1 hour</option><option value="0">No limit</option></select>
   <label class="label" for="p-learnMin">Learning time per day</label>
@@ -646,6 +656,8 @@ body.pad .ride-btn::after { content: " · X"; opacity: 0.6; }
   <select id="p-freeVehicles"><option value="false">Earn them with coins</option><option value="true">All unlocked (free play)</option></select>
   <span class="label">Progress</span>
   <div class="pstats" id="p-stats"></div>
+  <span class="label">Recent points · earned and spent</span>
+  <div class="pstats" id="p-log"></div>
   <button id="p-reset" class="wide danger">Erase all progress</button>
   <button id="parentDone" class="primary">Done</button>
 </div>
@@ -989,6 +1001,8 @@ function addBuilding(x, z, w, d, h, wallColor, roofColor, roofH, opts = {}) {
   scene.add(shade(grp));
   boxes.push({ x, z, hw: w / 2 + 0.3, hd: d / 2 + 0.3 });
 }
+// Home: a house right behind the start, with a sign and light beam you can see from anywhere in the valley
+addBuilding(0, -13, 10, 7, 4.2, 0xf3e3c3, 0xb5452f, 3.6, { frontWindows: [-3, 3], sideWindows: [0], chimney: true, door: 0x2f6b3a });
 addBuilding(-68, 32, 13, 9, 5.5, 0xe8dfca, 0x4f555c, 4, { frontWindows: [-4, 4], sideWindows: [-2, 2], chimney: true });
 addBuilding(-105, -48, 16, 22, 8, 0x9c3428, 0x37322f, 6, { trim: 0xf0ebe0, doorW: 5, doorH: 5, door: 0x7a2a20, sideWindows: [-6, 0, 6] });
 addBuilding(-40, -168, 8, 7, 4, 0x7d5e3e, 0x2f4436, 3.4, { frontWindows: [2.4], chimney: true, trim: 0xd8cdb4 });
@@ -1506,7 +1520,17 @@ addEventListener('keydown', e => {
   if (e.code === 'Escape') { setMenu(false); $('settings').hidden = true; }
 });
 addEventListener('keyup', e => { if (KEYMAP[e.code]) keys[KEYMAP[e.code]] = false; });
-addEventListener('blur', () => { for (const k in keys) keys[k] = false; });
+// Let go of everything: keys, sliders and camera drags. Used whenever the page or a dialog could swallow the "finger up"
+function releaseControls() {
+  for (const k in keys) keys[k] = false;
+  for (const sl of sliders) if (sl.held() || touch.throttle || touch.brake || touch.steer) sl.release();
+  if (cam.drag) { cam.drag = null; canvas.classList.remove('dragging'); }
+}
+addEventListener('blur', releaseControls);
+addEventListener('pagehide', releaseControls);
+document.addEventListener('visibilitychange', () => { if (document.hidden) releaseControls(); });
+// No finger on the screen means nothing can be held down
+for (const ev of ['touchend', 'touchcancel']) addEventListener(ev, e => { if (!e.touches.length) for (const sl of sliders) if (sl.held()) sl.release(); }, true);
 
 canvas.addEventListener('pointerdown', e => {
   if (cam.drag !== null) return;
@@ -1529,6 +1553,7 @@ canvas.addEventListener('pointercancel', endDrag);
 
 // Touch sliders: steering (left, springs to center) and gas/brake (right, up = gas, down = brake)
 if (matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window) document.body.classList.add('touch');
+const sliders = [];
 function bindSlider(el, axis, onChange) {
   const knob = el.querySelector('.knob'), fill = el.querySelector('.fill');
   let id = null;
@@ -1550,10 +1575,12 @@ function bindSlider(el, axis, onChange) {
     const r = el.getBoundingClientRect(), half = travel(r);
     return clamp(axis === 'x' ? (e.clientX - (r.left + r.width / 2)) / half : ((r.top + r.height / 2) - e.clientY) / half, -1, 1);
   };
-  el.addEventListener('pointerdown', e => { if (id !== null) return; id = e.pointerId; try { el.setPointerCapture(id); } catch (err) { /* capture is optional */ } el.classList.add('active'); set(read(e)); e.preventDefault(); });
+  // A new touch always takes over, so a lost lift (e.g. the slider was hidden mid-press) can never lock it
+  el.addEventListener('pointerdown', e => { id = e.pointerId; try { el.setPointerCapture(id); } catch (err) { /* capture is optional */ } el.classList.add('active'); set(read(e)); e.preventDefault(); });
   el.addEventListener('pointermove', e => { if (e.pointerId === id) set(read(e)); });
   const end = e => { if (e.pointerId !== id) return; id = null; el.classList.remove('active'); set(0); };
-  el.addEventListener('pointerup', end); el.addEventListener('pointercancel', end);
+  el.addEventListener('pointerup', end); el.addEventListener('pointercancel', end); el.addEventListener('lostpointercapture', end);
+  sliders.push({ el, held: () => id !== null, release: () => { id = null; el.classList.remove('active'); set(0); } });
 }
 bindSlider(document.getElementById('steer'), 'x', v => { touch.steer = v; });
 bindSlider(document.getElementById('pedal'), 'y', v => { touch.throttle = Math.max(0, v); touch.brake = Math.max(0, -v); });
@@ -1760,7 +1787,7 @@ function finishLap(t) {
   race.lastLap = t;
   const medalTxt = medal ? `<span class="good">${medal[0].toUpperCase() + medal.slice(1)} medal</span>` : `<span class="bad">No medal</span>`;
   const lapCoins = 2 + (medal === 'gold' ? 3 : medal === 'silver' ? 2 : medal === 'bronze' ? 1 : 0);
-  prog.coins += lapCoins; saveProg(); updateGemBar(true);
+  prog.coins += lapCoins; ptsWhy = 'race'; saveProg(); updateGemBar(true);
   toast(`Lap ${fmt(t)} · ${medalTxt}${isBest ? ' · New best' : ''} · +${lapCoins} 🪙`, 3.2);
   updateGoals();
 }
@@ -1968,11 +1995,16 @@ function setSound(on) {
   audio.on = on; store.set('bcr-sound-v1', on);
   soundSel.value = on ? 'on' : 'off';
   if (on) initAudio(); else if (audio.ctx) audio.ctx.suspend();
+  if (typeof syncSoundBtn === 'function') syncSoundBtn();
 }
 soundSel.value = audio.on ? 'on' : 'off';
 soundSel.addEventListener('change', () => setSound(soundSel.value === 'on'));
 // Safari only starts sound inside a tap or key press, and on iPad it counts the end of a tap, so listen to all of them
-const unlockAudio = () => { initAudio(); syncSoundBtn(); };
+const unlockAudio = e => {
+  // Remember whether the speaker button was asking for a tap before this tap starts the sound
+  if ((e.type === 'pointerdown' || e.type === 'keydown') && e.target && e.target.closest && e.target.closest('#soundBtn')) soundBtn.dataset.wasStuck = audio.on && (!audio.ctx || audio.ctx.state !== 'running') ? '1' : '';
+  initAudio(); syncSoundBtn();
+};
 for (const ev of ['pointerdown', 'pointerup', 'touchend', 'click', 'keydown']) addEventListener(ev, unlockAudio, true);
 document.addEventListener('visibilitychange', () => {
   if (!audio.ctx) return;
@@ -1981,11 +2013,23 @@ document.addEventListener('visibilitychange', () => {
 addEventListener('pageshow', () => { if (audio.ctx && audio.on) audio.ctx.resume().catch(() => {}); });
 // When the browser has paused sound and only a tap can restart it (e.g. playing with a controller), show a button for that
 const soundBtn = document.getElementById('soundBtn');
+// The speaker button: tap to mute or unmute; it blinks when Safari has paused sound and a tap will bring it back
 function syncSoundBtn() {
   const stuck = audio.on && (!audio.ctx || audio.ctx.state !== 'running');
-  soundBtn.hidden = !stuck;
+  soundBtn.textContent = audio.on && !stuck ? '🔊' : '🔇';
+  soundBtn.classList.toggle('off', !audio.on);
+  soundBtn.classList.toggle('stuck', stuck);
+  soundBtn.setAttribute('aria-label', !audio.on ? 'Sound is off · tap to turn on' : stuck ? 'Tap to start sound' : 'Sound is on · tap to mute');
 }
-soundBtn.addEventListener('click', e => { initAudio(); setTimeout(syncSoundBtn, 150); e.currentTarget.blur(); });
+soundBtn.addEventListener('click', e => {
+  e.stopPropagation();
+  const stuck = soundBtn.dataset.wasStuck === '1' || (audio.on && (!audio.ctx || audio.ctx.state !== 'running'));
+  soundBtn.dataset.wasStuck = '';
+  if (stuck) { initAudio(); toast('🔊 Sound on', 1.2); }
+  else { setSound(!audio.on); toast(audio.on ? '🔊 Sound on' : '🔇 Sound off', 1.2); }
+  setTimeout(syncSoundBtn, 150); e.currentTarget.blur();
+});
+syncSoundBtn();
 setInterval(() => { if (audio.ctx && audio.on && audio.ctx.state !== 'running') audio.ctx.resume().then(syncSoundBtn, syncSoundBtn); else syncSoundBtn(); }, 1500);
 
 // ---------- Tilt steering (only where the browser allows motion sensors) ----------
@@ -2442,7 +2486,7 @@ function modeUpdate(dt) {
   if (game.mode === 'explore') {
     for (const pl of PLACES) {
       if (pl.found || Math.hypot(pl.x - car.x, pl.z - car.z) > 18) continue;
-      pl.found = true; pl.flag.material = flagMatDone; prog.coins += 1; saveProg();
+      pl.found = true; pl.flag.material = flagMatDone; prog.coins += 1; ptsWhy = 'flag'; saveProg();
       const n = PLACES.filter(q => q.found).length;
       if (n === PLACES.length) finishRound('You found every place'); else { toast(`Found ${pl.name} · ${n}/${PLACES.length}`); sfx('gate'); }
     }
@@ -2456,14 +2500,14 @@ function modeUpdate(dt) {
       toast(`Picked up a hiker · ${game.carried}/${cap} seats used`); sfx('gate');
     }
     if (game.carried > 0 && Math.hypot(car.x, car.z) < 9 && speed < 9) {
-      game.delivered += game.carried; prog.coins += 2 * game.carried; saveProg(); game.carried = 0;
+      game.delivered += game.carried; prog.coins += 2 * game.carried; ptsWhy = 'delivery'; saveProg(); game.carried = 0;
       if (game.delivered >= hikers.length) finishRound('All hikers rescued');
       else { toast(`Hikers safe at base · ${game.delivered}/${hikers.length}`); sfx('gate'); }
     }
   } else if (game.mode === 'treasure' && game.end == null) {
     for (const c of chests) {
       if (c.found || Math.hypot(c.x - car.x, c.z - car.z) > 3.8) continue;
-      c.found = true; c.g.visible = false; prog.coins += 2; saveProg();
+      c.found = true; c.g.visible = false; prog.coins += 2; ptsWhy = 'coin pickup'; saveProg();
       for (let k = 0; k < 16; k++) { const a = k / 16 * Math.PI * 2; emit(c.x, groundHeight(c.x, c.z) + 0.6, c.z, '#ffd75e', 0.9, 0.9, 1.1, Math.cos(a) * 2.5, 3 + Math.random() * 2, Math.sin(a) * 2.5, true); }
       const n = chests.filter(q => q.found).length;
       sfx('coin');
@@ -2804,7 +2848,37 @@ function playDay() {
 const rideLeft = () => learn.limits.ride ? (learn.limits.ride + 10 * playDay().done.length) * 60 - playDay().ride : Infinity;
 const learnLeft = () => learn.limits.learn ? learn.limits.learn * 60 - playDay().learn : Infinity;
 const mins = sec => sec < 60 ? `${Math.max(0, Math.ceil(sec))} s` : `${Math.ceil(sec / 60)} min`;
-const saveProg = () => store.set('bcr-prog-v1', prog);
+// Every save notes what changed in coins, gems and stars, so a parent can see where points went
+let savedPts = { coins: prog.coins, gems: prog.gems, stars: prog.stars }, ptsWhy = '';
+function saveProg() {
+  // Another tab saved since we last loaded: start from its points and add only what changed here
+  const other = store.get('bcr-prog-v1', null);
+  if (other && (other.savedAt || 0) > (prog.savedAt || 0)) {
+    const mine = { coins: prog.coins - savedPts.coins, gems: prog.gems - savedPts.gems, stars: prog.stars - savedPts.stars };
+    Object.assign(prog, other);
+    savedPts = { coins: prog.coins, gems: prog.gems, stars: prog.stars };
+    for (const k in mine) prog[k] = Math.max(0, prog[k] + mine[k]);
+  }
+  const d = { coins: prog.coins - savedPts.coins, gems: prog.gems - savedPts.gems, stars: prog.stars - savedPts.stars };
+  if (d.coins || d.gems || d.stars) {
+    prog.log = [{ t: Date.now(), ...d, why: ptsWhy }, ...(prog.log || [])].slice(0, 30);
+    savedPts = { coins: prog.coins, gems: prog.gems, stars: prog.stars };
+  }
+  ptsWhy = '';
+  prog.savedAt = Date.now();
+  store.set('bcr-prog-v1', prog);
+}
+// If the game is open in two tabs, an old tab must never write its older points over the newer ones
+function syncProg() {
+  const s = store.get('bcr-prog-v1', null);
+  if (!s || (s.savedAt || 0) <= (prog.savedAt || 0)) return;
+  Object.assign(prog, s);
+  savedPts = { coins: prog.coins, gems: prog.gems, stars: prog.stars };
+  if (typeof updateGemBar === 'function') updateGemBar(true);
+}
+addEventListener('storage', e => { if (e.key === pkey('bcr-prog-v1')) syncProg(); });
+document.addEventListener('visibilitychange', () => { if (!document.hidden) syncProg(); });
+addEventListener('focus', syncProg);
 const tankSize = () => 20 + prog.up.tank * 10;
 const owns = t => learn.freeVehicles || PRICES[t] === 0 || prog.owned.includes(t);
 const today = () => new Date().toDateString();
@@ -3228,7 +3302,7 @@ function collectReward() {
   else if (kind === 'coin') prog.coins += pts;
   else if (kind === 'gem') prog.gems += pts;
   else prog.stars += pts;
-  prog.houses++;
+  prog.houses++; ptsWhy = KINDS[kind].house.toLowerCase();
   h.ready = false; h.t = 45; h.icon.visible = false; h.beam.visible = false; h.roof.material = doneRoof;
   for (let k = 0; k < 18; k++) { const a = k / 18 * Math.PI * 2; emit(h.x, groundHeight(h.x, h.z) + 5, h.z, KINDS[kind].css, 1, 0.9, 1.2, Math.cos(a) * 3, 3 + Math.random() * 3, Math.sin(a) * 3, true); }
   if (gemTarget === kind) gemTarget = null;
@@ -3304,7 +3378,7 @@ function updateLearn(dt, inp) {
     if (prog.fuel === 0) { toast('Out of gas! Find a ⛽ fuel house', 3.5); gemTarget = 'fuel'; updateGemBar(true); boost.emptyToast = simTime; }
   } else if (simTime - boost.emptyToast > 25) { boost.emptyToast = simTime; toast('Running on fumes · follow the arrow to ⛽', 3); }
   // Following the home arrow: stopping at the sign walks you back into the garage
-  if (gemTarget === 'home' && homeDist() < 7 && speed < 4 && car.crashT <= 0) { gemTarget = null; homeMark.visible = false; goHome(); return; }
+  if (gemTarget === 'home' && homeDist() < 7 && speed < 4 && car.crashT <= 0) { gemTarget = null; goHome(); return; }
   // Knock on a house door when you stop next to it
   for (const h of houses) {
     if (!h.ready) {
@@ -3328,12 +3402,13 @@ gemBar.innerHTML = KIND_KEYS.map(k => `<button data-k="${k}" aria-pressed="false
 const HOME_SPOT = [0, 0];
 const homeMark = new THREE.Group();
 {
-  const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, 40, 8, 1, true), new THREE.MeshBasicMaterial({ color: 0xf2a33a, transparent: true, opacity: 0.35, depthWrite: false, fog: false }));
-  beam.position.y = 20; homeMark.add(beam);
-  const sign = new THREE.Sprite(new THREE.SpriteMaterial({ map: badgeTex('🏠', '#f2a33a'), fog: false }));
-  sign.scale.set(2.4, 2.4, 1); sign.position.y = 5; homeMark.add(sign);
-  homeMark.position.set(HOME_SPOT[0], groundHeight(HOME_SPOT[0], HOME_SPOT[1]), HOME_SPOT[1]);
-  homeMark.visible = false; scene.add(homeMark);
+  const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 60, 8, 1, true), new THREE.MeshBasicMaterial({ color: 0xf2a33a, transparent: true, opacity: 0.3, depthWrite: false, fog: false }));
+  beam.position.y = 30; homeMark.add(beam);
+  const sign = new THREE.Sprite(new THREE.SpriteMaterial({ map: badgeTex('🏠', '#f2a33a'), fog: false, depthTest: false }));
+  sign.scale.set(3, 3, 1); sign.position.y = 12; sign.renderOrder = 5; homeMark.add(sign);
+  homeMark.userData = { beam, sign };
+  homeMark.position.set(0, groundHeight(0, -13), -13);
+  scene.add(homeMark);
 }
 const homeDist = () => Math.hypot(car.x - HOME_SPOT[0], car.z - HOME_SPOT[1]);
 // Rough range: how far the fuel lasts at a steady cruise
@@ -3341,7 +3416,7 @@ const fuelRangeKm = () => prog.fuel / ((0.003 + 0.05 * 0.8) * (prog.powers.saver
 gemBar.addEventListener('click', e => {
   const b = e.target.closest('button'); if (!b) return;
   gemTarget = gemTarget === b.dataset.k ? null : b.dataset.k;
-  if (gemTarget === 'home') toast(`Follow the arrow home · ${(homeDist() / 1000).toFixed(1)} km · stop at the 🏠 sign`);
+  if (gemTarget === 'home') toast(`Follow the arrow home · ${(homeDist() / 1000).toFixed(1)} km · stop in front of the house`);
   else if (gemTarget) { const [h, d] = nearestHouse(gemTarget); toast(h ? `Follow the arrow to the ${KINDS[gemTarget].house.toLowerCase()} · ${(d / 1000).toFixed(1)} km` : 'None nearby right now'); }
   updateGemBar(true); b.blur();
 });
@@ -3364,7 +3439,11 @@ function updateGemBar(force) {
   gemBar.querySelector('[data-k="fuel"]').classList.toggle('low', prog.fuel < tankSize() * 0.25);
   $('gd-home').textContent = `${(homeDist() / 1000).toFixed(1)} km`;
   gemBar.querySelector('[data-k="home"]').setAttribute('aria-pressed', String(gemTarget === 'home'));
-  homeMark.visible = gemTarget === 'home';
+  // The house sign stays readable from far away: it grows with distance, and glows brighter when it's the target
+  const hd = Math.hypot(car.x, car.z + 13), hm = homeMark.userData;
+  hm.sign.scale.setScalar(clamp(hd * 0.07, 3, 50));
+  hm.sign.visible = hd > 18;
+  hm.beam.material.opacity = gemTarget === 'home' ? 0.5 : 0.25;
   const f = clamp(prog.fuel / tankSize(), 0, 1);
   $('gasFill').style.width = (f * 100) + '%';
   $('gasFill').style.background = `hsl(${Math.round(f * 120)}, 72%, 45%)`;
@@ -3425,7 +3504,7 @@ function renderShop() {
     const row = (id, icon, name, desc, price, cur, done) => `<div class="srow"><span class="si">${icon}</span><span class="sn"><b>${name}</b><small>${desc}</small></span>${done ? '<span class="sdone">Got it</span>' : `<button data-buy="${id}" ${price > (cur === '💎' ? prog.gems : prog.stars) ? 'class="poor"' : ''}>${price} ${cur}</button>`}</div>`;
     let html = '<h3>Upgrades · pay with 💎 gems</h3>';
     for (const [id, u] of Object.entries(UPGRADES)) { const lv = prog.up[id]; html += row('up-' + id, u.icon, `${u.name} ${lv < 3 ? `· level ${lv + 1}` : '· max'}`, u.desc, u.prices[lv], '💎', lv >= 3); }
-    html += `<h3>Paint the ${VNAMES[car.type]} · 4 💎</h3><div class="paints">${PAINTS.map(([n, c], i) => `<button data-buy="paint-${i}" aria-label="${n}" style="background:#${c.toString(16).padStart(6, '0')}"></button>`).join('')}</div>`;
+    html += `<h3>Paint the ${VNAMES[car.type]} · 4 💎 a new color · colors you own are free</h3><div class="paints">${PAINTS.map(([n, c], i) => `<button data-buy="paint-${i}" aria-label="${n}"${(prog.paintOwned || []).includes(c) ? ' class="own"' : ''} style="background:#${c.toString(16).padStart(6, '0')}"></button>`).join('')}</div>`;
     html += '<h3>Superpowers · pay with ⭐ stars</h3>';
     for (const [id, p] of Object.entries(POWERS)) html += row('pw-' + id, p.icon, p.name, p.desc, p.price, '⭐', !!prog.powers[id]);
     body.innerHTML = html;
@@ -3439,14 +3518,29 @@ function renderShop() {
     body.innerHTML = html;
   }
 }
+let buyArm = {};
 shopEl.addEventListener('click', e => {
   const b = e.target.closest('button'); if (!b) return;
   if (b.id === 'shopClose') { shopEl.hidden = true; return; }
   const id = b.dataset.buy; if (!id) return;
+  const paintOwned = id.startsWith('paint-') && (prog.paintOwned || []).includes(PAINTS[+id.slice(6)][1]);
+  // Spending needs a second tap, so points can't vanish by tapping around
+  if (id !== 'chest' && !paintOwned && !b.classList.contains('poor')) {
+    if (buyArm.id !== id || performance.now() - buyArm.t > 4000) {
+      buyArm = { id, t: performance.now() };
+      shopEl.querySelectorAll('.arm').forEach(x => { x.classList.remove('arm'); if (x.dataset.label) x.textContent = x.dataset.label; });
+      b.classList.add('arm');
+      if (!id.startsWith('paint-')) { b.dataset.label = b.textContent; b.textContent = 'Buy?'; }
+      toast(id.startsWith('paint-') ? 'Tap the color again to buy it for 4 💎' : 'Tap again to buy it', 2);
+      return;
+    }
+    buyArm = {};
+  }
+  ptsWhy = id.startsWith('up-') ? UPGRADES[id.slice(3)].name : id.startsWith('pw-') ? POWERS[id.slice(3)].name : id.startsWith('paint-') ? 'paint' : id === 'chest' ? 'treasure chest' : '';
   const pay = (cur, n) => { if (prog[cur] < n) { toast(cur === 'gems' ? 'Not enough 💎 · find gem houses' : 'Not enough ⭐ · find star houses'); return false; } prog[cur] -= n; return true; };
   if (id.startsWith('up-')) { const k = id.slice(3), lv = prog.up[k]; if (lv < 3 && pay('gems', UPGRADES[k].prices[lv])) { prog.up[k]++; sfx('coin'); toast(`${UPGRADES[k].name} level ${prog.up[k]}!`); } }
   else if (id.startsWith('pw-')) { const k = id.slice(3); if (!prog.powers[k] && pay('stars', POWERS[k].price)) { prog.powers[k] = true; earnBadge('power'); sfx('coin'); toast(`${POWERS[k].icon} ${POWERS[k].name} unlocked!`); } }
-  else if (id.startsWith('paint-')) { const [, c] = PAINTS[+id.slice(6)]; if (pay('gems', 4)) { prog.paint[car.type] = c; applyPaint(); sfx('coin'); } }
+  else if (id.startsWith('paint-')) { const [, c] = PAINTS[+id.slice(6)]; if (paintOwned || pay('gems', 4)) { prog.paint[car.type] = c; if (!paintOwned) prog.paintOwned = [...(prog.paintOwned || []), c]; applyPaint(); sfx('coin'); } }
   else if (id === 'chest' && prog.chest !== today()) { prog.chest = today(); prog.coins += 3; prog.gems += 2; prog.fuel = Math.min(tankSize(), prog.fuel + 5); earnBadge('chest'); sfx('coin'); toast('🎁 +3 🪙 +2 💎 +5 L ⛽'); }
   saveProg(); renderShop(); updateGemBar(true);
 });
@@ -3454,9 +3548,12 @@ function applyPaint() {
   for (const t of Object.keys(models)) { const m = models[t].body.userData.paint; if (m && prog.paint[t] != null) m.color.set(prog.paint[t]); }
 }
 // Buying vehicles happens by walking up to them at home
+let vehArm = {};
 function buyVehicle(t) {
   if (AIRCRAFT.includes(t)) { toast(prog.coins >= PRICES[t] ? 'You have enough! Flying arrives in the next update' : `Keep saving! ${PRICES[t] - prog.coins} more 🪙 · flying arrives in the next update`, 3); return false; }
   if (prog.coins < PRICES[t]) { toast(`You need ${PRICES[t] - prog.coins} more 🪙 · find coin houses`, 2.5); return false; }
+  if (vehArm.t !== t || performance.now() - vehArm.at > 5000) { vehArm = { t, at: performance.now() }; toast(`Buy the ${VNAMES[t]} for ${PRICES[t]} 🪙? Press again to buy it`, 3); return false; }
+  vehArm = {}; ptsWhy = VNAMES[t];
   prog.coins -= PRICES[t]; prog.owned.push(t); earnBadge('wheels'); saveProg(); sfx('coin');
   toast(`You bought the ${VNAMES[t]}! 🎉`, 2.5);
   refreshVehicleState();
@@ -3478,7 +3575,11 @@ function renderParent() {
   if (player) {
     $('p-who').textContent = `Settings for ${player.name}. Each player has their own.`;
     $('p-grade').value = player.grade || '3'; $('p-age').value = String(player.age || 8);
+    $('p-pass').placeholder = player.pass ? `New password for ${player.name}` : `No password yet · type one`;
   }
+  const when = t => new Date(t).toLocaleString([], { weekday: 'short', hour: 'numeric', minute: '2-digit' });
+  const amt = (n, ic) => n ? `<b>${n > 0 ? '+' : '−'}${Math.abs(n)}</b> ${ic}` : '';
+  $('p-log').innerHTML = (prog.log || []).slice(0, 12).map(l => `<p>${when(l.t)} · ${[amt(l.coins, '🪙'), amt(l.gems, '💎'), amt(l.stars, '⭐')].filter(Boolean).join(' ')}${l.why ? ` · ${l.why}` : ''}</p>`).join('') || '<p>Nothing yet.</p>';
   $('p-ride').value = String(learn.limits.ride); $('p-learnMin').value = String(learn.limits.learn);
   const d = playDay();
   $('p-chores').innerHTML = '';
@@ -3504,6 +3605,13 @@ $('p-ride').addEventListener('change', e => { learn.limits.ride = +e.target.valu
 $('p-learnMin').addEventListener('change', e => { learn.limits.learn = +e.target.value; store.set('bcr-learn-v1', learn); renderParent(); });
 $('p-grade').addEventListener('change', e => { if (!player) return; player.grade = e.target.value; savePlayer(); applyLevel(); store.set('bcr-learn-v1', learn); });
 $('p-age').addEventListener('change', e => { if (!player) return; player.age = +e.target.value; savePlayer(); });
+$('p-passForm').addEventListener('submit', e => {
+  e.preventDefault(); if (!player) return;
+  const v = $('p-pass').value.trim();
+  player.pass = v ? passHash(v) : ''; savePlayer();
+  $('p-pass').value = ''; $('p-pass').blur(); renderParent();
+  toast(v ? `Password saved for ${player.name}` : `${player.name} has no password now`, 2.5);
+});
 $('p-choreForm').addEventListener('submit', e => {
   e.preventDefault();
   const c = $('p-choreName').value.trim().slice(0, 28);
@@ -3522,7 +3630,7 @@ let resetArmed = 0;
 $('p-reset').addEventListener('click', e => {
   if (performance.now() - resetArmed > 4000) { resetArmed = performance.now(); e.currentTarget.textContent = 'Tap again to erase all progress'; return; }
   Object.assign(prog, { coins: 0, gems: 0, stars: 0, fuel: 20, owned: ['bike'], up: { engine: 0, tires: 0, tank: 0 }, paint: {}, powers: {}, badges: [], houses: 0, fuelHouses: 0, streak: 0, bestStreak: 0, chest: '', math: BLANK_STATS(), spell: BLANK_STATS(), read: BLANK_STATS(), sci: BLANK_STATS(), bible: BLANK_STATS(), bibleSeen: [], day: prog.day });
-  saveProg(); refreshVehicleState(); renderParent(); updateGemBar(true);
+  ptsWhy = 'parent erased progress'; saveProg(); refreshVehicleState(); renderParent(); updateGemBar(true);
   e.currentTarget.textContent = 'Progress erased';
 });
 
@@ -3914,6 +4022,7 @@ function showRider() {
 function cycleRider(d) { home.idx = (home.idx + d + RIDERS.length) % RIDERS.length; showRider(); sfx('beep', 0); }
 function setPhase(p) {
   phase = p;
+  releaseControls();
   document.body.classList.toggle('home', p !== 'drive');
   document.body.classList.toggle('picking', p === 'pick');
   homeUI.hidden = p !== 'pick';
@@ -4087,18 +4196,19 @@ function updateHome(dt) {
 
 // ---------- Players ----------
 const loginEl = $('login');
-function openLogin() {
+function openLogin(atStart) {
   const list = $('loginList');
   list.innerHTML = '';
-  for (const pl of players) {
+  const order = player ? [player, ...players.filter(pl => pl !== player)] : players;
+  for (const pl of order) {
     const pg = rawStore.get(pkey('bcr-prog-v1', pl), {});
     const row = document.createElement('div');
     row.className = 'srow' + (pl === player ? ' me' : '');
     row.innerHTML = `<span class="si">🧑</span><span class="sn"><b></b><small>${pl.age ? `age ${pl.age} · ` : ''}${pl.grade ? `${gradeName(pl.grade)} · ` : ''}🪙 ${pg.coins | 0} · 💎 ${pg.gems | 0} · ⭐ ${pg.stars | 0} · rides as ${RIDERS[clamp(rawStore.get(pkey('bcr-rider-v1', pl), 0) | 0, 0, RIDERS.length - 1)].name}</small></span>`;
     row.querySelector('b').textContent = pl.name;
     const b = document.createElement('button');
-    b.textContent = pl === player ? 'Playing' : 'Play';
-    b.addEventListener('click', () => switchPlayer(pl));
+    b.textContent = (pl.pass && (pl !== player || atStart) ? '🔒 ' : '') + (pl === player ? (atStart ? 'Continue' : 'Playing') : 'Play');
+    b.addEventListener('click', () => pl.pass && (pl !== player || atStart) ? askPass(pl, row) : switchPlayer(pl));
     row.append(b); list.append(row);
   }
   if (!players.length) list.innerHTML = '<p class="snote">Type your name to start. Your points will be saved under it.</p>';
@@ -4106,25 +4216,53 @@ function openLogin() {
   loginEl.hidden = false;
   setTimeout(() => (players.length ? list.querySelector('button') : $('loginName')).focus(), 50);
 }
+// Passwords are kept as a short code, only to keep players out of each other's saves on a shared device
+function passHash(s) {
+  let h = 2166136261;
+  for (const ch of 'bcr:' + String(s).trim().toLowerCase()) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); }
+  return (h >>> 0).toString(36);
+}
+function askPass(pl, row) {
+  loginEl.querySelectorAll('.passform').forEach(x => x.remove());
+  const f = document.createElement('form');
+  f.className = 'newp passform';
+  f.innerHTML = '<input type="password" maxlength="12" placeholder="Password" autocomplete="current-password" enterkeyhint="go" aria-label="Password"><button>Go</button><button type="button" class="forgot">Forgot?</button>';
+  const inp = f.querySelector('input');
+  f.addEventListener('submit', e => {
+    e.preventDefault();
+    if (passHash(inp.value) === pl.pass) { inp.blur(); switchPlayer(pl); return; }
+    inp.value = ''; toast("That password isn't right · try again", 2); inp.focus();
+  });
+  f.querySelector('.forgot').addEventListener('click', () => askPin(() => {
+    pl.pass = ''; savePlayer();
+    toast(`${pl.name}'s password is cleared · set a new one in the Parent corner`, 3.5);
+    switchPlayer(pl);
+  }));
+  row.append(f);
+  setTimeout(() => inp.focus(), 50);
+}
 function switchPlayer(pl) {
-  if (pl === player) { loginEl.hidden = true; return; }
+  if (pl === player) { loginEl.hidden = true; toast(`Welcome back, ${pl.name}!`, 2.5); return; }
+  // This tab already checked the password, so don't ask again right after the reload
+  try { sessionStorage.setItem('bcr-unlocked', pl.id); } catch (e) { /* optional */ }
   rawStore.set('bcr-player-v1', pl.id);
   location.reload();
 }
-function addPlayer(name, age, grade) {
+function addPlayer(name, age, grade, pass) {
   name = name.trim().slice(0, 14);
   if (!name) { $('loginName').focus(); return; }
+  if (pass.trim().length < 3) { toast('Make a password with at least 3 letters or numbers', 3); $('loginPass').focus(); return; }
   if (players.some(pl => pl.name.toLowerCase() === name.toLowerCase())) { toast(`${name} is already here · tap Play next to the name`); return; }
   if (!age) { toast('Pick your age'); $('loginAge').focus(); return; }
   if (!grade) { toast('Pick your grade'); $('loginGrade').focus(); return; }
-  const pl = { id: Date.now().toString(36), name, age: +age, grade };
+  const pl = { id: Date.now().toString(36), name, age: +age, grade, pass: passHash(pass) };
   // The very first player keeps the progress saved before players existed
   if (!players.length) for (const k of PLAYER_KEYS) { const v = rawStore.get(k, undefined); if (v !== undefined) rawStore.set(pkey(k, pl), v); }
   players.push(pl);
   rawStore.set('bcr-players-v1', players);
   switchPlayer(pl);
 }
-$('loginForm').addEventListener('submit', e => { e.preventDefault(); addPlayer($('loginName').value, $('loginAge').value, $('loginGrade').value); });
+$('loginForm').addEventListener('submit', e => { e.preventDefault(); addPlayer($('loginName').value, $('loginAge').value, $('loginGrade').value, $('loginPass').value); });
 const GRADES = ['K', '1', '2', '3', '4', '5', '6'];
 const gradeName = g => g === 'K' ? 'Kindergarten' : `Grade ${g}`;
 const ageOpts = sel => [...Array(9)].map((_, i) => `<option value="${i + 4}">${sel ? '' : 'Age '}${i + 4}</option>`).join('');
@@ -4241,7 +4379,14 @@ refreshVehicleState();
 applyPaint();
 updateGemBar(true);
 enterPick();
-if (player) { $('playerName').textContent = player.name; toast(`Welcome back, ${player.name}!`, 3); } else openLogin();
+if (player) $('playerName').textContent = player.name;
+// Every time the game opens, ask who's playing; the last player is listed first, one tap to continue
+let justUnlocked = false;
+try { justUnlocked = !!player && sessionStorage.getItem('bcr-unlocked') === player.id; sessionStorage.removeItem('bcr-unlocked'); } catch (e) { /* optional */ }
+if (justUnlocked) toast(`Hi ${player.name}!`, 2.5); else openLogin(true);
+addEventListener('pagehide', () => saveProg());
+// Ask the browser to keep this device's saves instead of clearing them when space runs low
+try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) { /* optional */ }
 
 function update(dt) {
   const inp = readInput(), px = car.x, pz = car.z;
@@ -4270,6 +4415,8 @@ function frame(now) {
   // Average out uneven frame times so motion doesn't judder; a real slowdown still comes through within a few frames
   smoothDt += (Math.min(0.05, raw) - smoothDt) * 0.3;
   const dt = smoothDt;
+  // A slider that got hidden (a dialog opened) while held lets go; Safari never sends the lift for it
+  for (const sl of sliders) if (sl.held() && !sl.el.getClientRects().length) sl.release();
   if (phase !== 'drive') {
     if (shopEl.hidden && parentEl.hidden && pinEl.hidden && (loginEl.hidden || phase === 'pick')) updateHome(dt); else { pollGamepad(); home.sky.position.copy(camera.position); }
     updateAudio(dt, lastInput);
